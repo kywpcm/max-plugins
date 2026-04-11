@@ -1,0 +1,72 @@
+{
+  "version": 2,
+  "plugins": {
+    "skill-creator@claude-plugins-official": [
+      {
+        "scope": "user",
+        "installPath": "<HOME>/.claude/plugins/cache/claude-plugins-official/skill-creator/unknown",
+        "version": "unknown",
+        "installedAt": "2026-03-24T06:58:59.136Z",
+        "lastUpdated": "2026-04-06T07:59:43.903Z",
+        "gitCommitSha": "7074ac045bf5d2021760d642e98e53c8cfb8c31f"
+      }
+    ],
+    "firecrawl@claude-plugins-official": [
+      {
+        "scope": "user",
+        "installPath": "<HOME>/.claude/plugins/cache/claude-plugins-official/firecrawl/1.0.8",
+        "version": "1.0.8",
+        "installedAt": "2026-04-03T04:59:32.381Z",
+        "lastUpdated": "2026-04-09T03:51:17.825Z",
+        "gitCommitSha": "684b975c8cc6bd0fcfa96f787900bf87fffeef57"
+      }
+    ],
+    "explanatory-output-style@claude-plugins-official": [
+      {
+        "scope": "user",
+        "installPath": "<HOME>/.claude/plugins/cache/claude-plugins-official/explanatory-output-style/1.0.0",
+        "version": "1.0.0",
+        "installedAt": "2026-04-03T05:40:08.085Z",
+        "lastUpdated": "2026-04-07T00:00:00.000Z"
+      }
+    ],
+    "superpowers@claude-plugins-official": [
+      {
+        "scope": "user",
+        "installPath": "<HOME>/.claude/plugins/cache/claude-plugins-official/superpowers/5.0.7",
+        "version": "5.0.7",
+        "installedAt": "2026-04-03T06:27:35.493Z",
+        "lastUpdated": "2026-04-06T07:59:43.903Z",
+        "gitCommitSha": "b7a8f76985f1e93e75dd2f2a3b424dc731bd9d37"
+      }
+    ],
+    "ralph-loop@claude-plugins-official": [
+      {
+        "scope": "user",
+        "installPath": "<HOME>/.claude/plugins/cache/claude-plugins-official/ralph-loop/1.0.0",
+        "version": "1.0.0",
+        "installedAt": "2026-04-03T07:03:05.544Z",
+        "lastUpdated": "2026-04-06T07:59:43.903Z"
+      }
+    ],
+    "ralph-skills@ralph-marketplace": [
+      {
+        "scope": "user",
+        "installPath": "<HOME>/.claude/plugins/cache/ralph-marketplace/ralph-skills/1.0.0",
+        "version": "1.0.0",
+        "installedAt": "2026-04-03T07:03:05.599Z",
+        "lastUpdated": "2026-04-06T07:59:43.903Z",
+        "gitCommitSha": "6c53cb0b831ebe8739c6a003e22af14902d8b0b5"
+      }
+    ],
+    "discord@claude-plugins-official": [
+      {
+        "scope": "user",
+        "installPath": "<HOME>/.claude/plugins/cache/claude-plugins-official/discord/0.0.4",
+        "version": "0.0.4",
+        "installedAt": "2026-04-11T12:11:51.671Z",
+        "lastUpdated": "2026-04-11T12:11:51.671Z"
+      }
+    ]
+  }
+}

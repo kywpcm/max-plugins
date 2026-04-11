@@ -1,0 +1,27 @@
+{
+  "claude-plugins-official": {
+    "source": {
+      "source": "github",
+      "repo": "anthropics/claude-plugins-official"
+    },
+    "installLocation": "<HOME>/.claude/plugins/marketplaces/claude-plugins-official",
+    "lastUpdated": "2026-04-11T13:20:57.557Z"
+  },
+  "ralph-marketplace": {
+    "source": {
+      "source": "git",
+      "url": "https://github.com/snarktank/ralph.git"
+    },
+    "installLocation": "<HOME>/.claude/plugins/marketplaces/ralph-marketplace",
+    "lastUpdated": "2026-04-11T13:20:57.362Z",
+    "autoUpdate": true
+  },
+  "toby-plugins": {
+    "source": {
+      "source": "github",
+      "repo": "tobyilee/toby-plugins"
+    },
+    "installLocation": "<HOME>/.claude/plugins/marketplaces/toby-plugins",
+    "lastUpdated": "2026-04-11T12:11:57.779Z"
+  }
+}

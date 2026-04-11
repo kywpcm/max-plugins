@@ -1,0 +1,20 @@
+{
+  "name": "max-plugins",
+  "owner": {
+    "name": "Max Kwon"
+  },
+  "metadata": {
+    "description": "Max's personal Claude Code plugin marketplace",
+    "version": "1.0.0"
+  },
+  "plugins": [
+    {
+      "name": "dotfiles-claude-code",
+      "source": "./",
+      "description": "Personal Claude Code environment — custom skills, commands, settings, and hooks",
+      "version": "1.0.0",
+      "keywords": ["dotfiles", "environment", "korean", "devops"],
+      "category": "productivity"
+    }
+  ]
+}
