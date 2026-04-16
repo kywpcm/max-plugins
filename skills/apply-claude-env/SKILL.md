@@ -1,5 +1,5 @@
 ---
-name: apply-env
+name: apply-claude-env
 description: >
   max-plugins repo를 사용하여 현재 머신에 Claude Code 환경을 적용합니다.
   새 머신에서 동일한 Claude Code 환경을 구축하거나, 기존 머신의 환경을

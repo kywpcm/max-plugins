@@ -1,5 +1,5 @@
 ---
-name: sync-env
+name: sync-claude-env
 description: >
   현재 라이브 Claude Code 환경(~/.claude/)의 변경사항을 max-plugins repo에 동기화합니다.
   settings.json, CLAUDE.md, hook scripts, 플러그인 메타데이터, 채널 설정 등을
