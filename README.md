@@ -8,6 +8,8 @@
 
 | 유형 | 이름 | 설명 |
 |------|------|------|
+| 스킬 | `sync-env` | 라이브 환경을 max-plugins repo에 동기화 |
+| 스킬 | `apply-env` | max-plugins repo로 환경 설치/업데이트 |
 | 스킬 | `comment-code` | 코드에 한국어 주석 자동 추가 |
 | 스킬 | `save-conversation` | 대화 요약을 마크다운으로 저장 |
 | 명령어 | `feature-branch` | develop에서 feature 브랜치 생성 |
