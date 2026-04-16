@@ -5,7 +5,7 @@
       "repo": "anthropics/claude-plugins-official"
     },
     "installLocation": "<HOME>/.claude/plugins/marketplaces/claude-plugins-official",
-    "lastUpdated": "2026-04-11T13:20:57.557Z"
+    "lastUpdated": "2026-04-16T09:10:46.978Z"
   },
   "ralph-marketplace": {
     "source": {
@@ -13,7 +13,7 @@
       "url": "https://github.com/snarktank/ralph.git"
     },
     "installLocation": "<HOME>/.claude/plugins/marketplaces/ralph-marketplace",
-    "lastUpdated": "2026-04-11T13:20:57.362Z",
+    "lastUpdated": "2026-04-16T09:10:46.461Z",
     "autoUpdate": true
   },
   "toby-plugins": {

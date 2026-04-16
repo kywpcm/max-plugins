@@ -32,30 +32,49 @@ install_file() {
   echo "  [install] $dest"
 }
 
-echo "[1/5] 설정 파일 설치..."
+# 기존 파일이 없을 때만 복사 (채널 access.json 등 사용자 설정 보호)
+install_file_if_missing() {
+  local src="$1"
+  local dest="$2"
+
+  mkdir -p "$(dirname "$dest")"
+
+  if [ -f "$dest" ]; then
+    echo "  [skip] $dest (이미 존재)"
+  else
+    cp "$src" "$dest"
+    echo "  [install] $dest"
+  fi
+}
+
+echo "[1/6] 설정 파일 설치..."
 install_file "$DOTFILES_DIR/CLAUDE.md" "$CLAUDE_DIR/CLAUDE.md"
 install_file "$DOTFILES_DIR/settings.json" "$CLAUDE_DIR/settings.json"
 install_file "$DOTFILES_DIR/statusline-command.sh" "$CLAUDE_DIR/statusline-command.sh"
 
 echo ""
-echo "[2/5] 훅 스크립트 설치..."
+echo "[2/6] 훅 스크립트 설치..."
 install_file "$DOTFILES_DIR/hooks/scripts/block-dangerous.sh" "$CLAUDE_DIR/hooks/scripts/block-dangerous.sh"
 install_file "$DOTFILES_DIR/hooks/scripts/save-conv-before-commit.sh" "$CLAUDE_DIR/hooks/scripts/save-conv-before-commit.sh"
 chmod +x "$CLAUDE_DIR/hooks/scripts/block-dangerous.sh"
 chmod +x "$CLAUDE_DIR/hooks/scripts/save-conv-before-commit.sh"
 
 echo ""
-echo "[3/5] 플러그인 메타데이터 설치 (참조용)..."
+echo "[3/6] 플러그인 메타데이터 설치 (참조용)..."
 install_file "$DOTFILES_DIR/meta/installed_plugins.json" "$CLAUDE_DIR/plugins/installed_plugins.json"
 install_file "$DOTFILES_DIR/meta/known_marketplaces.json" "$CLAUDE_DIR/plugins/known_marketplaces.json"
 install_file "$DOTFILES_DIR/meta/blocklist.json" "$CLAUDE_DIR/plugins/blocklist.json"
 
 echo ""
-echo "[4/5] Discord 접근 설정 설치..."
-install_file "$DOTFILES_DIR/meta/discord-access.json" "$CLAUDE_DIR/channels/discord/access.json"
+echo "[4/6] Discord 접근 설정 설치..."
+install_file_if_missing "$DOTFILES_DIR/meta/discord-access.json" "$CLAUDE_DIR/channels/discord/access.json"
 
 echo ""
-echo "[5/5] 경로 치환..."
+echo "[5/6] Telegram 접근 설정 설치..."
+install_file_if_missing "$DOTFILES_DIR/meta/telegram-access.json" "$CLAUDE_DIR/channels/telegram/access.json"
+
+echo ""
+echo "[6/6] 경로 치환..."
 # installed_plugins.json과 known_marketplaces.json의 <HOME> 플레이스홀더를 실제 경로로 변경
 sed -i '' "s|<HOME>|$HOME|g" "$CLAUDE_DIR/plugins/installed_plugins.json" 2>/dev/null || \
 sed -i "s|<HOME>|$HOME|g" "$CLAUDE_DIR/plugins/installed_plugins.json"
@@ -66,8 +85,11 @@ echo ""
 echo "=== 설치 완료! ==="
 echo ""
 echo "⚠️  다음 항목은 수동 설정이 필요합니다:"
-echo "  1. Discord 유저 ID: ~/.claude/channels/discord/access.json 에서 allowFrom에 본인 ID 추가"
-echo "  2. settings.json의 enabledPlugins: 실제 설치된 플러그인에 맞게 조정"
+echo "  1. Discord 봇 토큰: ~/.claude/channels/discord/.env 에 DISCORD_BOT_TOKEN=... 추가"
+echo "  2. Discord 유저 ID: ~/.claude/channels/discord/access.json 에서 allowFrom에 본인 ID 추가"
+echo "  3. Telegram 봇 토큰: ~/.claude/channels/telegram/.env 에 TELEGRAM_BOT_TOKEN=... 추가"
+echo "  4. Telegram 유저 ID: ~/.claude/channels/telegram/access.json 에서 allowFrom에 본인 ID 추가"
+echo "  5. settings.json의 enabledPlugins: 실제 설치된 플러그인에 맞게 조정"
 echo ""
 echo "플러그인이 아직 설치되지 않았다면:"
 echo "  claude plugin marketplace add --source github:kywpcm/max-plugins"

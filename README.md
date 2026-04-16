@@ -46,7 +46,10 @@ cd ~/.claude/plugins/cache/max-plugins/dotfiles-claude-code/1.0.0
 
 ### 3. 수동 설정
 
+- `~/.claude/channels/discord/.env` — `DISCORD_BOT_TOKEN=...` 추가
 - `~/.claude/channels/discord/access.json` — `allowFrom`에 본인 Discord 유저 ID 추가
+- `~/.claude/channels/telegram/.env` — `TELEGRAM_BOT_TOKEN=...` 추가
+- `~/.claude/channels/telegram/access.json` — `allowFrom`에 본인 Telegram 유저 ID 추가
 - `~/.claude/settings.json` — `enabledPlugins`를 실제 설치된 플러그인에 맞게 조정
 
 ## 업데이트
