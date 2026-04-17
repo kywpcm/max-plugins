@@ -63,7 +63,6 @@ echo ""
 echo "[3/6] 플러그인 메타데이터 설치 (참조용)..."
 install_file "$DOTFILES_DIR/meta/installed_plugins.json" "$CLAUDE_DIR/plugins/installed_plugins.json"
 install_file "$DOTFILES_DIR/meta/known_marketplaces.json" "$CLAUDE_DIR/plugins/known_marketplaces.json"
-install_file "$DOTFILES_DIR/meta/blocklist.json" "$CLAUDE_DIR/plugins/blocklist.json"
 
 echo ""
 echo "[4/6] Discord 접근 설정 설치..."

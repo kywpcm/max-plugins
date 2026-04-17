@@ -112,7 +112,7 @@ install.sh가 설치하는 항목:
 - `settings.json` — 권한, 훅, 플러그인 설정
 - `statusline-command.sh` — tmux 상태줄 스크립트
 - 훅 스크립트 — 위험 명령어 차단, 커밋 전 대화 저장
-- 플러그인 메타데이터 — installed_plugins.json, known_marketplaces.json, blocklist.json
+- 플러그인 메타데이터 — installed_plugins.json, known_marketplaces.json
 - 채널 접근 설정 — Discord/Telegram access.json (기존 파일이 없을 때만)
 
 ### Step 7: 수동 설정 안내

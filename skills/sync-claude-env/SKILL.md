@@ -64,9 +64,6 @@ diff /tmp/live_installed_plugins.json "$REPO_DIR/dotfiles/meta/installed_plugins
 # known_marketplaces.json도 동일하게
 sed "s|$HOME|<HOME>|g" ~/.claude/plugins/known_marketplaces.json > /tmp/live_known_marketplaces.json
 diff /tmp/live_known_marketplaces.json "$REPO_DIR/dotfiles/meta/known_marketplaces.json"
-
-# blocklist.json
-diff ~/.claude/plugins/blocklist.json "$REPO_DIR/dotfiles/meta/blocklist.json"
 ```
 
 ### Step 4: 채널 설정 비교
@@ -111,9 +108,6 @@ ls "$REPO_DIR/dotfiles/meta/"*-access.json 2>/dev/null
 sed "s|$HOME|<HOME>|g" ~/.claude/plugins/installed_plugins.json > "$REPO_DIR/dotfiles/meta/installed_plugins.json"
 sed "s|$HOME|<HOME>|g" ~/.claude/plugins/known_marketplaces.json > "$REPO_DIR/dotfiles/meta/known_marketplaces.json"
 ```
-
-**blocklist.json**:
-- 라이브 파일을 그대로 복사한다.
 
 ### Step 7: 새 채널 처리
 
