@@ -22,6 +22,11 @@ PROJECT_ROOT=$(git -C "$PROJECT_DIR" rev-parse --show-toplevel 2>/dev/null || ec
 
 LOGDIR="$PROJECT_ROOT/conv-logs"
 
+# Skip hook entirely when conv-logs/ is gitignored — user opted out of log-before-commit enforcement
+if git -C "$PROJECT_ROOT" check-ignore -q conv-logs 2>/dev/null; then
+  exit 0
+fi
+
 # Check if conv-logs directory exists and has conv logs
 if [ ! -d "$LOGDIR" ]; then
   cat >&2 <<'EOF'
@@ -74,17 +79,14 @@ RELATIVE_LOG=$(python3 -c "import os,sys; print(os.path.relpath(sys.argv[1], sys
 cd "$PROJECT_ROOT"
 if ! git diff --cached --name-only | grep -qF "$RELATIVE_LOG"; then
   if ! git ls-files --error-unmatch "$RELATIVE_LOG" >/dev/null 2>&1; then
-    # Skip staging check when the log path is gitignored — user opted to keep logs local-only
-    if ! git check-ignore -q "$RELATIVE_LOG" 2>/dev/null; then
-      cat >&2 <<EOF
+    cat >&2 <<EOF
 {
   "decision": "deny",
   "reason": "git commit intercepted: conversation log not staged",
   "systemMessage": "HOOK INSTRUCTION: Conversation log exists but is not staged. Run: git add \"$RELATIVE_LOG\" and then retry the git commit."
 }
 EOF
-      exit 2
-    fi
+    exit 2
   fi
 fi
 
