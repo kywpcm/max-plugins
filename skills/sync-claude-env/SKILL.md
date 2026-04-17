@@ -131,7 +131,57 @@ sed "s|$HOME|<HOME>|g" ~/.claude/plugins/known_marketplaces.json > "$REPO_DIR/do
 
 3. **README.md 업데이트**: "수동 설정" 섹션에 새 채널의 봇 토큰과 유저 ID 안내를 추가
 
-### Step 8: 보안 점검
+### Step 8: 플러그인 버전 bump
+
+repo에 변경사항이 있으면 `/plugin update`가 다른 머신에 반영되도록 `plugin.json`과 `marketplace.json`의 `version`을 올린다.
+
+**왜 필요한가**: Claude Code는 `plugin.json`의 `version` 필드로 업데이트 여부를 판단한다. git 커밋만 있고 version이 그대로면 "already at latest"로 인식되어 다른 머신에 반영되지 않는다.
+
+**semver 판단 규칙** (`MAJOR.MINOR.PATCH`):
+
+| 레벨 | 언제 올리나 | 예시 |
+|------|-------------|------|
+| **patch** (`X.Y.Z → X.Y.(Z+1)`) | `dotfiles/` 설정·훅·스크립트만 변경 | settings.json 훅 수정, statusline 개선 |
+| **minor** (`X.Y.Z → X.(Y+1).0`) | `skills/` 또는 `commands/`의 추가·삭제·의미있는 변경, 새 채널, 새 기능 | 새 skill 추가, skill workflow 큰 변경 |
+| **major** (`X.Y.Z → (X+1).0.0`) | breaking change | skill 이름·동작 변경, install.sh 파괴적 변경 |
+
+판단이 애매하면 사용자에게 확인한다.
+
+**bump 대상 필드** (두 파일 모두 동일 버전으로):
+- `.claude-plugin/plugin.json` → `version`
+- `.claude-plugin/marketplace.json` → `plugins[0].version`
+
+> `marketplace.json`의 최상위 `metadata.version`은 **마켓플레이스 스키마 버전**이다. 마켓플레이스 구조 자체가 바뀔 때만 올리고, 플러그인 변경에는 건드리지 않는다.
+
+**절차**:
+
+```bash
+# 1. 현재 버전 확인
+CURRENT=$(python3 -c "import json; print(json.load(open('$REPO_DIR/.claude-plugin/plugin.json'))['version'])")
+echo "Current: $CURRENT"
+```
+
+```bash
+# 2. 새 버전 결정 후 두 파일 동시 업데이트 (예: 1.1.0 → 1.1.1)
+NEW_VERSION="1.1.1"
+python3 <<PY
+import json
+for path, key in [
+    ('$REPO_DIR/.claude-plugin/plugin.json', ['version']),
+    ('$REPO_DIR/.claude-plugin/marketplace.json', ['plugins', 0, 'version']),
+]:
+    d = json.load(open(path))
+    ref = d
+    for k in key[:-1]: ref = ref[k]
+    ref[key[-1]] = '$NEW_VERSION'
+    json.dump(d, open(path, 'w'), indent=2, ensure_ascii=False)
+    print(f"updated {path}")
+PY
+```
+
+변경사항이 전혀 없으면 bump는 생략한다.
+
+### Step 9: 보안 점검
 
 커밋 전 보안 스캔을 수행한다:
 
@@ -151,7 +201,7 @@ cat "$REPO_DIR/.gitignore"
 
 문제가 발견되면 사용자에게 경고하고 수정 방법을 안내한다.
 
-### Step 9: 변경사항 커밋 및 푸시
+### Step 10: 변경사항 커밋 및 푸시
 
 ```bash
 cd "$REPO_DIR"
@@ -170,7 +220,7 @@ sync: {변경 요약}
 
 사용자 확인 후 커밋하고 푸시한다.
 
-### Step 10: 완료 보고
+### Step 11: 완료 보고
 
 변경 사항 요약과 함께, 다른 머신에서 적용하는 방법을 안내한다:
 ```
