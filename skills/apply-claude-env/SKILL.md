@@ -70,28 +70,47 @@ SSH 인증 실패 시 HTTPS로 대안 제시:
 git clone https://github.com/kywpcm/max-plugins.git ~/workspace/max-plugins
 ```
 
-### Step 4: repo 최신화
+### Step 4: workspace clone 최신화 (해당되는 경우만)
+
+사용자가 `~/workspace/max-plugins` 같은 별도 경로에 repo를 clone해둔 경우에만 해당한다. Claude Code의 **플러그인 cache**(`~/.claude/plugins/cache/max-plugins/`)는 Step 5에서 따로 갱신하므로 이 단계는 독립적이다.
 
 ```bash
-cd "$REPO_DIR"
-git pull origin master
+if [ -n "$REPO_DIR" ] && [ -d "$REPO_DIR/.git" ]; then
+  cd "$REPO_DIR" && git pull origin master
+fi
 ```
 
-### Step 5: 마켓플레이스 등록 및 플러그인 설치
+workspace clone이 없으면 이 단계는 건너뛴다.
 
-사용자에게 아래 명령어를 실행하도록 안내한다. `claude plugin` 명령은 대화형이라 사용자가 직접 터미널에서 실행해야 한다.
+### Step 5: 마켓플레이스 및 플러그인 동기화
 
-```
-아래 명령어를 터미널에서 직접 실행해 주세요:
+Step 1에서 진단한 상태에 따라 초기 설치 또는 업데이트를 실행한다. `claude plugin` CLI는 비대화형이므로 Bash tool로 직접 실행한다.
 
-# 마켓플레이스 등록 (이미 등록된 경우 건너뜀)
+**케이스 A — 초기 설치** (마켓플레이스 미등록 또는 플러그인 미설치):
+
+```bash
+# 마켓플레이스 등록
 claude plugin marketplace add --source github:kywpcm/max-plugins
 
-# 플러그인 설치 (이미 설치된 경우 업데이트)
+# 플러그인 설치
 claude plugin install dotfiles-claude-code@max-plugins
 ```
 
-사용자가 실행을 완료하면 다음 단계로 진행한다.
+**케이스 B — 업데이트** (마켓플레이스 등록 + 플러그인 이미 설치):
+
+```bash
+# 마켓플레이스의 최신 메타데이터 pull
+claude plugin marketplace update max-plugins
+
+# 플러그인 업데이트 (새 version이 있으면 cache를 해당 버전으로 교체)
+claude plugin update dotfiles-claude-code@max-plugins
+```
+
+**주의사항**:
+
+- 두 명령 모두 실패할 수 있다 (네트워크, 인증, 권한 등). 실패 시 에러 원문을 사용자에게 보여주고 수동 실행을 권한다.
+- `claude plugin update`는 "Restart to apply changes"를 출력한다 — **cache 파일 교체는 즉시**되지만 **현재 세션의 로드된 skill 목록은 재시작 전까지 구버전**이다. `/reload-plugins` 또는 새 세션 시작을 권장한다.
+- `claude plugin update`가 "already at latest"라 하는데 분명히 GitHub에 신규 커밋이 있다면, **plugin.json의 version bump 누락**이 원인일 확률이 높다. 이 경우 repo에서 `/sync-claude-env`의 version bump 단계를 실행해야 한다.
 
 ### Step 6: dotfiles 설치 (install.sh 실행)
 
