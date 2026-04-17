@@ -4,9 +4,12 @@ description: >
   현재 라이브 Claude Code 환경(~/.claude/)의 변경사항을 max-plugins repo에 동기화합니다.
   settings.json, CLAUDE.md, hook scripts, 플러그인 메타데이터, 채널 설정 등을
   비교하고 repo를 최신 환경에 맞게 업데이트합니다.
-  "환경 동기화", "sync env", "dotfiles 동기화", "플러그인 설정 동기화",
-  "env sync", "설정 동기화", "환경 반영", "dotfiles sync", "맥스 플러그인 동기화",
-  "max-plugins 업데이트", "설정 업데이트", "환경 업데이트" 시 사용합니다.
+  "claude 환경 동기화", "sync claude env", "env sync",
+  "플러그인 설정 동기화", "settings.json 동기화", "CLAUDE.md 반영",
+  "훅 동기화", "맥스 플러그인 동기화", "max-plugins 업데이트",
+  "claude 설정 업데이트", "claude 환경 반영", "claude 환경 업데이트" 시 사용합니다.
+  shell/터미널 dotfiles(.zshrc/.tmux.conf 등)가 아닌 Claude Code 환경 전용입니다.
+  순수 dotfiles를 repo로 올리려면 sync-dotfiles-env를 사용하세요.
   새 플러그인 추가, 설정 변경, 새 채널(Discord/Telegram 등) 추가 후에도 사용하세요.
 user-invocable: true
 version: 0.1.0

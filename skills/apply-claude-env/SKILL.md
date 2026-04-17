@@ -4,10 +4,13 @@ description: >
   max-plugins repo를 사용하여 현재 머신에 Claude Code 환경을 적용합니다.
   새 머신에서 동일한 Claude Code 환경을 구축하거나, 기존 머신의 환경을
   최신 repo 상태로 업데이트할 때 사용합니다.
-  "환경 적용", "apply env", "새 머신 설정", "dotfiles 적용", "env apply",
-  "환경 설치", "환경 구축", "클로드 코드 설정", "dotfiles install",
-  "max-plugins 설치", "max-plugins 적용", "새 컴퓨터 설정",
-  "다른 머신에서 적용", "환경 복원" 시 사용합니다.
+  "claude 환경 적용", "apply claude env", "env apply",
+  "새 머신 claude 설정", "claude 환경 설치", "claude 환경 구축",
+  "클로드 코드 설정", "max-plugins 설치", "max-plugins 적용",
+  "settings.json 복원", "CLAUDE.md 적용", "훅 스크립트 적용",
+  "claude 환경 복원", "새 컴퓨터 claude 설정" 시 사용합니다.
+  shell/터미널 dotfiles(.zshrc/.tmux.conf 등)가 아닌 Claude Code 환경 전용입니다.
+  순수 dotfiles를 적용하려면 apply-dotfiles-env를 사용하세요.
   max-plugins repo를 처음 설치하거나 업데이트할 때 반드시 사용하세요.
 user-invocable: true
 version: 0.1.0

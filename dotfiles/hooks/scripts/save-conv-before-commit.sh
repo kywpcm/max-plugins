@@ -17,6 +17,30 @@ if [ -z "$PROJECT_DIR" ]; then
   PROJECT_DIR=$(pwd)
 fi
 
+# Allow the command itself to override PROJECT_DIR — handles the case where the
+# Claude Code session cwd is not a git repo but the command runs inside one via
+# `cd <path> && git commit` or `git -C <path> commit`. Only scan the portion of
+# the command *before* the first `git commit` occurrence, so free text in the
+# commit message (e.g. words like "cd" or "-C") never leaks into the parse.
+PREFIX="${COMMAND%%git commit*}"
+CMD_DIR=""
+if printf '%s' "$PREFIX" | grep -qE 'git[[:space:]]+-C[[:space:]]+'; then
+  CMD_DIR=$(printf '%s' "$PREFIX" | sed -nE 's/.*git[[:space:]]+-C[[:space:]]+("([^"]+)"|'"'"'([^'"'"']+)'"'"'|([^[:space:]]+)).*/\2\3\4/p' | head -1)
+elif printf '%s' "$PREFIX" | grep -qE '(^|[&;(])[[:space:]]*cd[[:space:]]+'; then
+  CMD_DIR=$(printf '%s' "$PREFIX" | sed -nE 's/.*(^|[&;(])[[:space:]]*cd[[:space:]]+("([^"]+)"|'"'"'([^'"'"']+)'"'"'|([^[:space:]&;|()]+)).*/\3\4\5/p' | head -1)
+fi
+if [ -n "$CMD_DIR" ]; then
+  # Resolve ~ and relative paths against the session cwd
+  case "$CMD_DIR" in
+    '~'|'~/'*) CMD_DIR="${HOME}${CMD_DIR#\~}" ;;
+    /*) ;;
+    *) CMD_DIR="$PROJECT_DIR/$CMD_DIR" ;;
+  esac
+  if [ -d "$CMD_DIR" ]; then
+    PROJECT_DIR="$CMD_DIR"
+  fi
+fi
+
 # Resolve git repo root — conv-logs always lives at the project root
 PROJECT_ROOT=$(git -C "$PROJECT_DIR" rev-parse --show-toplevel 2>/dev/null || echo "$PROJECT_DIR")
 
