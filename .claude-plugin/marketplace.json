@@ -12,7 +12,7 @@
       "name": "dotfiles-claude-code",
       "source": "./",
       "description": "Personal Claude Code environment — custom skills, commands, settings, and hooks",
-      "version": "1.1.0",
+      "version": "1.2.0",
       "keywords": ["dotfiles", "environment", "korean", "devops"],
       "category": "productivity"
     }
