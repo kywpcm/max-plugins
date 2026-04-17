@@ -8,8 +8,8 @@ reset_5h=$(echo "$input" | jq -r '.rate_limits.five_hour.resets_at // 0' | cut -
 reset_7d=$(echo "$input" | jq -r '.rate_limits.seven_day.resets_at // 0' | cut -d. -f1)
 model=$(echo "$input" | jq -r '.model.display_name // "Unknown"' | sed 's/ context)/)/')
 
-# git 브랜치
-branch=$(git -C "$cwd" --no-optional-locks branch --show-current 2>/dev/null)
+# git 브랜치 (symbolic-ref는 git 2.18+에서도 동작)
+branch=$(git -C "$cwd" --no-optional-locks symbolic-ref --short HEAD 2>/dev/null)
 
 # 색상 선택 함수
 pick_color() {
@@ -26,7 +26,7 @@ fmt_remaining() {
   now=$(date +%s)
   diff=$((reset_at - now))
   if [ "$diff" -le 0 ] || [ "$reset_at" -eq 0 ]; then
-    printf '--'
+    printf '%s' '--'
     return
   fi
   days=$((diff / 86400))
@@ -47,11 +47,15 @@ color_7d=$(pick_color "$rate_7d")
 remain_5h=$(fmt_remaining "$reset_5h")
 remain_7d=$(fmt_remaining "$reset_7d")
 
+# 홈 디렉토리를 ~로 축약 (zsh %~ 동작과 동일)
+home="$HOME"
+short_cwd=$(echo "$cwd" | sed "s|^$home|~|")
+
 # 디렉토리 + 브랜치
 if [ -n "$branch" ]; then
-  dir_part=$(printf '\033[36m%s\033[0m\033[32m (%s)\033[0m' "$cwd" "$branch")
+  dir_part=$(printf '\033[36m%s\033[0m\033[32m (%s)\033[0m' "$short_cwd" "$branch")
 else
-  dir_part=$(printf '\033[36m%s\033[0m' "$cwd")
+  dir_part=$(printf '\033[36m%s\033[0m' "$short_cwd")
 fi
 
 printf '%s\nCtx %b%s%%\033[0m | 5h %b%s%%\033[0m (%s) | 7d %b%s%%\033[0m (%s) | %s' \

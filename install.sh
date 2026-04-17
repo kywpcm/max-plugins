@@ -90,6 +90,7 @@ echo "  2. Discord 유저 ID: ~/.claude/channels/discord/access.json 에서 allo
 echo "  3. Telegram 봇 토큰: ~/.claude/channels/telegram/.env 에 TELEGRAM_BOT_TOKEN=... 추가"
 echo "  4. Telegram 유저 ID: ~/.claude/channels/telegram/access.json 에서 allowFrom에 본인 ID 추가"
 echo "  5. settings.json의 enabledPlugins: 실제 설치된 플러그인에 맞게 조정"
+echo "  6. (선택) terminal-notifier: 권한 승인/작업 완료 알림용. brew install terminal-notifier"
 echo ""
 echo "플러그인이 아직 설치되지 않았다면:"
 echo "  claude plugin marketplace add --source github:kywpcm/max-plugins"

@@ -24,7 +24,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "terminal-notifier -title \"Claude Code\" -message \"$(tmux display-message -p -t $TMUX_PANE '#S / #I:#W / #P') 권한 승인 필요\" -sound Glass"
+            "command": "command -v terminal-notifier >/dev/null 2>&1 && terminal-notifier -title \"Claude Code\" -message \"$(tmux display-message -p -t $TMUX_PANE '#S / #I:#W / #P') 권한 승인 필요\" -sound Glass || true"
           }
         ]
       }
@@ -35,7 +35,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "terminal-notifier -title \"Claude Code\" -message \"$(tmux display-message -p -t $TMUX_PANE '#S / #I:#W / #P') 작업 완료\" -sound Glass"
+            "command": "command -v terminal-notifier >/dev/null 2>&1 && terminal-notifier -title \"Claude Code\" -message \"$(tmux display-message -p -t $TMUX_PANE '#S / #I:#W / #P') 작업 완료\" -sound Glass || true"
           }
         ]
       }
@@ -47,12 +47,7 @@
           {
             "type": "command",
             "command": "bash ~/.claude/hooks/scripts/block-dangerous.sh"
-          }
-        ]
-      },
-      {
-        "matcher": "Bash",
-        "hooks": [
+          },
           {
             "type": "command",
             "command": "bash ~/.claude/hooks/scripts/save-conv-before-commit.sh"
@@ -73,7 +68,8 @@
     "ralph-loop@claude-plugins-official": true,
     "ralph-skills@ralph-marketplace": true,
     "discord@claude-plugins-official": true,
-    "telegram@claude-plugins-official": true
+    "telegram@claude-plugins-official": true,
+    "dotfiles-claude-code@max-plugins": true
   },
   "extraKnownMarketplaces": {
     "ralph-marketplace": {
@@ -82,9 +78,16 @@
         "url": "https://github.com/snarktank/ralph.git"
       },
       "autoUpdate": true
+    },
+    "max-plugins": {
+      "source": {
+        "source": "github",
+        "repo": "kywpcm/max-plugins"
+      },
+      "autoUpdate": true
     }
   },
-  "effortLevel": "high",
+  "effortLevel": "max",
   "channelsEnabled": true,
   "skipDangerousModePermissionPrompt": true
 }
