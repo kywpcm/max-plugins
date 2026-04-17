@@ -92,7 +92,7 @@
       "autoUpdate": true
     }
   },
-  "effortLevel": "max",
+  "effortLevel": "xhigh",
   "channelsEnabled": true,
   "skipDangerousModePermissionPrompt": true
 }
