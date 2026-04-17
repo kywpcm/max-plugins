@@ -13,7 +13,7 @@
       "url": "https://github.com/snarktank/ralph.git"
     },
     "installLocation": "<HOME>/.claude/plugins/marketplaces/ralph-marketplace",
-    "lastUpdated": "2026-04-17T06:47:56.080Z",
+    "lastUpdated": "2026-04-17T11:56:35.064Z",
     "autoUpdate": true
   },
   "toby-plugins": {
@@ -30,7 +30,7 @@
       "repo": "kywpcm/max-plugins"
     },
     "installLocation": "<HOME>/.claude/plugins/marketplaces/max-plugins",
-    "lastUpdated": "2026-04-17T06:47:55.379Z",
+    "lastUpdated": "2026-04-17T11:56:34.298Z",
     "autoUpdate": true
   }
 }

@@ -94,8 +94,8 @@ GEMINI_PANE=$(tmux split-window -v -t "$CODEX_PANE" -P -F '#{pane_id}')
 
 tmux capture-pane -p -t "$GEMINI_PANE" >/dev/null 2>&1 || true
 
-# Default model — change here if you want a different Gemini version.
-tmux send-keys -t "$GEMINI_PANE" "gemini --yolo --model gemini-3.1-pro-preview" Enter
+# Uses the Gemini CLI's default model — pass `--model <name>` here to pin a specific version.
+tmux send-keys -t "$GEMINI_PANE" "gemini --yolo" Enter
 tmux select-pane -t "$GEMINI_PANE" -T "Gemini"            # visual label (TUI may overwrite later)
 tmux set-option -p -t "$GEMINI_PANE" @agent_role 'gemini' # programmatic marker — TUI cannot touch user options
 ```

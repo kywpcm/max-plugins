@@ -1,6 +1,6 @@
 {
   "name": "dotfiles-claude-code",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "description": "Personal Claude Code environment — custom skills, commands, settings, and hooks for cross-machine sync",
   "author": {
     "name": "Max Kwon"
@@ -8,7 +8,12 @@
   "homepage": "https://github.com/kywpcm/max-plugins",
   "repository": "https://github.com/kywpcm/max-plugins",
   "license": "MIT",
-  "keywords": ["dotfiles", "environment", "korean", "devops"],
+  "keywords": [
+    "dotfiles",
+    "environment",
+    "korean",
+    "devops"
+  ],
   "skills": "./skills/",
   "commands": "./commands/"
 }
