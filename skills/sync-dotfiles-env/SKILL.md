@@ -10,7 +10,7 @@ description: >
   max-plugins(Claude Code 환경)용 sync-claude-env와는 다른 스킬입니다.
   shell/터미널 dotfiles 변경을 repo로 올릴 때 반드시 이 스킬을 사용하세요.
 user-invocable: true
-version: 0.1.0
+version: 0.2.0
 ---
 
 # sync-dotfiles-env
@@ -24,11 +24,12 @@ version: 0.1.0
 - git 명령은 `dotfiles` alias (`git --git-dir=$HOME/.dotfiles --work-tree=$HOME`) 형식으로 실행한다.
 - **민감 정보는 절대 커밋하지 않는다**. 토큰, API 키, 개인 식별 정보, SSH 키, `.env` 파일은 스캔으로 미리 차단한다.
 - **새 파일 추적 시 신중**: `$HOME`에는 수많은 파일이 있으므로, 새로 추적할 파일은 사용자에게 반드시 확인받는다.
-- 바이너리(`switch-to-abc`)와 소스(`.swift`)를 함께 바꿨는지 확인한다. 바이너리만 갱신하고 소스가 옛 버전이면 다른 머신에서 재빌드할 때 문제가 된다.
+- 바이너리(`switch-to-abc`)는 머신별 Swift/Foundation 런타임에 묶이는 재빌드 산물이므로 기본적으로 **sync 대상이 아니다**. `.swift` 소스만 커밋한다. 자세한 절차는 Step 5 참조.
+- **`--skip-worktree`가 걸린 파일은 이 머신에서 repo와 분리 관리**된다. 해당 파일의 로컬 변경은 `diff`에 뜨지 않으며 sync에 포함되지 않는다 (의도된 동작).
 
 ## Workflow
 
-### Step 1: bare repo 상태 확인
+### Step 1: bare repo 상태 + skip-worktree 현황 확인
 
 ```bash
 # bare repo 존재 여부
@@ -40,7 +41,14 @@ fi
 # 원격 확인
 git --git-dir=$HOME/.dotfiles --work-tree=$HOME remote -v
 git --git-dir=$HOME/.dotfiles --work-tree=$HOME branch --show-current
+
+# skip-worktree 현황 — 이 머신에서 로컬 관리 중인 파일은 sync에 포함되지 않음
+git -C "$HOME" --git-dir=$HOME/.dotfiles --work-tree=$HOME ls-files -v | grep -E "^S " \
+  && echo "(위 파일은 skip-worktree — sync에 포함되지 않음. 해제: dotfiles update-index --no-skip-worktree <경로>)" \
+  || echo "skip-worktree 파일 없음"
 ```
+
+사용자가 "이 skip-worktree 파일 변경을 올리고 싶다"고 요청하면, 먼저 해제 → 커밋 → 다시 `--skip-worktree` 설정의 순서를 안내한다 (Step 5의 바이너리 예외 절차와 동일한 패턴).
 
 ### Step 2: 변경 사항 조회
 
@@ -84,9 +92,11 @@ done
 
 매칭이 있으면 **반드시 사용자에게 경고**하고, 커밋 전 값을 환경변수/`.env`로 분리할지 확인한다.
 
-### Step 5: 특수 파일 체크 — switch-to-abc 바이너리 + 소스 일관성
+### Step 5: 특수 파일 체크 — switch-to-abc 바이너리 정책
 
-바이너리(`switch-to-abc`)가 변경되었는데 소스(`switch-to-abc.swift`)는 그대로라면(또는 반대) 경고한다. 둘 중 하나만 바뀌면 다른 머신 복원 시 상태가 어긋난다.
+**원칙**: 바이너리(`switch-to-abc`)는 각 머신의 Swift/Foundation 런타임에 링크된 재빌드 산물이다. 기본적으로 **sync 대상이 아니며**, `.swift` 소스만 repo에 커밋한다. 각 머신은 `/apply-dotfiles-env` Step 9에서 자체 재빌드 후 `--skip-worktree`로 로컬 고정한다.
+
+따라서 정상 흐름에서는 `.local/bin/switch-to-abc`가 skip-worktree이므로 `diff --name-only`에 **뜨지 않고**, 아래 불일치 경고가 발화하지 않는다 (의도된 동작).
 
 ```bash
 BIN_CHANGED=$(git --git-dir=$HOME/.dotfiles --work-tree=$HOME diff --name-only -- .local/bin/switch-to-abc)
@@ -96,12 +106,24 @@ if [ -n "$BIN_CHANGED" ] && [ -z "$SRC_CHANGED" ]; then
   echo "⚠️  바이너리만 변경됨. 소스(.swift)도 함께 업데이트했는지 확인하세요."
 fi
 if [ -z "$BIN_CHANGED" ] && [ -n "$SRC_CHANGED" ]; then
-  echo "⚠️  소스만 변경됨. 재빌드된 바이너리도 함께 커밋할지 확인하세요."
-  echo "재빌드: swiftc ~/.local/bin/switch-to-abc.swift -o ~/.local/bin/switch-to-abc"
+  echo "⚠️  소스만 변경됨. 다른 머신들은 pull 후 swiftc로 재빌드해야 새 동작이 반영됨."
+  echo "이 머신에서 로컬 테스트를 원하면: swiftc ~/.local/bin/switch-to-abc.swift -o ~/.local/bin/switch-to-abc"
 fi
 ```
 
-사용자 판단에 따라 재빌드 후 다시 Step 2로 돌아가거나, 그대로 진행한다.
+**예외 — 바이너리를 repo에 올려야 할 때** (동일 환경 머신 다수에 같은 바이너리를 공유하고 싶은 드문 경우):
+
+```bash
+# 1) 로컬에서 skip-worktree 해제
+git -C "$HOME" --git-dir=$HOME/.dotfiles --work-tree=$HOME \
+  update-index --no-skip-worktree ".local/bin/switch-to-abc"
+# 2) 재빌드 + add + commit (이 sync 스킬의 Step 6~9 정상 흐름 탐)
+# 3) push 후 다시 skip-worktree 설정하여 이 머신에서 분리 관리 복귀
+git -C "$HOME" --git-dir=$HOME/.dotfiles --work-tree=$HOME \
+  update-index --skip-worktree ".local/bin/switch-to-abc"
+```
+
+이 예외 경로는 다른 머신이 push된 바이너리를 **아키텍처/Swift 버전이 다른데 pull 받을 위험**이 있으므로, 실수로 재발동하지 않도록 수동 흐름으로만 둔다.
 
 ### Step 6: 사용자 확인
 
