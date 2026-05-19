@@ -19,6 +19,31 @@ from typing import Any
 SKILL_DIR = Path(__file__).resolve().parent.parent  # skills/figma-prd/
 TEMPLATE_DIR = SKILL_DIR / "templates"
 
+# extract.py가 수집한 page_info dict의 키 → PRD에 표시할 한글 라벨.
+PAGE_INFO_LABEL_MAP = {
+    "project": "프로젝트",
+    "date": "작성일",
+    "author": "작성자",
+    "screen": "화면",
+    "screen id": "화면ID",
+}
+PAGE_INFO_KEY_ORDER = ("project", "date", "author", "screen", "screen id")
+
+
+def render_page_info(page_info: dict[str, str]) -> str:
+    if not page_info:
+        return ""
+    parts: list[str] = []
+    for key in PAGE_INFO_KEY_ORDER:
+        if key in page_info:
+            label = PAGE_INFO_LABEL_MAP.get(key, key)
+            value = page_info[key] or "-"
+            parts.append(f"{label}={value}")
+    for key, value in page_info.items():
+        if key not in PAGE_INFO_LABEL_MAP:
+            parts.append(f"{key}={value or '-'}")
+    return " · ".join(parts)
+
 
 def safe_node_id(node_id: str) -> str:
     return node_id.replace(":", "-")
@@ -67,6 +92,9 @@ def render_node_section(
         f"- **Figma 노드 URL**: {figma_node_url(file_key, node_id)}",
         f"- **로컬 경로**: `{relpath(node_dir, output_root)}/`",
     ]
+    page_info_line = render_page_info(node_entry.get("page_info") or {})
+    if page_info_line:
+        lines.append(f"- **페이지 메타**: {page_info_line}")
     excl_ids = node_entry.get("exclude_node_ids") or []
     excl_notes = node_entry.get("exclude_notes") or []
     if excl_ids or excl_notes:

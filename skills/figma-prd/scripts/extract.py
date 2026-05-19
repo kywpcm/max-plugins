@@ -1,23 +1,54 @@
 #!/usr/bin/env python3
 """figma-prd 스킬 — 추출 단계.
 
-Figma REST API로 지정 노드들의 트리·텍스트·이미지를 결정적으로 수집해
-출력 디렉터리에 저장한다. 멀티모달 분석은 이 스크립트가 하지 않는다 — 그 단계는
-스킬 컨트롤러가 Agent 도구로 위임한다.
+Figma REST API로 지정 노드들의 트리·텍스트·이미지를 결정적으로 수집한다.
+다음 4가지는 추출 단계에서 자동 처리되며 config로 노출되지 않는다:
+
+  1. ``page info`` 프레임은 본문에서 빼고 ``page_info`` 메타 dict로 별도 수집.
+  2. 노이즈 프레임(라디오 데모, 번호 매기기 ellipse 등)은 가지치기.
+  3. 푸터·저작권·주소·연락처 같은 텍스트는 휴리스틱으로 스킵하고,
+     같은 부모 프레임 안의 다른 텍스트도 함께 제거.
+  4. 동일 줄이 5회 이상 반복되는 placeholder는 한 줄로 압축.
 """
 from __future__ import annotations
 
 import argparse
 import json
 import os
+import re
 import sys
 import urllib.error
 import urllib.parse
 import urllib.request
+from collections import Counter
 from pathlib import Path
 from typing import Any
 
 FIGMA_API = "https://api.figma.com/v1"
+
+# 페이지 메타: 자기 자신은 보존하되 본문 texts에서는 빠진다.
+PAGE_INFO_FRAME_NAMES = {"page info", "Page info"}
+
+# 가지치기 대상 프레임 이름 패턴.
+NOISE_FRAME_PATTERNS = [
+    re.compile(r"^라디오 조합$"),
+    re.compile(r"^Group 1000001436$"),  # 번호 매기기 ellipse 래퍼 (안에 "1","2","3" 단일 숫자)
+]
+
+# 텍스트 노드 자체를 스킵하는 휴리스틱.
+NOISE_TEXT_PATTERNS = [
+    re.compile(r"Copyright"),
+    re.compile(r"All rights reserved", re.IGNORECASE),
+    re.compile(r"Cheonan-Si", re.IGNORECASE),
+    re.compile(
+        r"^\s*\(?\d{5}\)?\s*"
+        r"(서울|부산|대구|인천|광주|대전|울산|세종|경기|강원|충북|충남|전북|전남|경북|경남|제주)"
+    ),
+    re.compile(r"\d{2,4}-\d{3,4}-\d{4}.*@.*\."),  # 전화+이메일 (예: 031-000-0000(abc@abc.com))
+]
+
+# 동일 줄 반복 압축 임계치.
+REPEAT_THRESHOLD = 5
 
 
 def http_get(url: str, headers: dict[str, str] | None = None) -> bytes:
@@ -51,6 +82,78 @@ def has_image_fill(node: dict[str, Any]) -> bool:
     return any(isinstance(f, dict) and f.get("type") == "IMAGE" for f in fills)
 
 
+def is_noise_frame(name: str) -> bool:
+    if not name:
+        return False
+    return any(p.match(name) for p in NOISE_FRAME_PATTERNS)
+
+
+def is_noise_text(chars: str | None) -> bool:
+    if chars is None:
+        return True
+    stripped = chars.strip()
+    if not stripped:
+        return True
+    if len(stripped) <= 1 and stripped in {"-", "_", ".", "·"}:
+        return True
+    return any(p.search(stripped) for p in NOISE_TEXT_PATTERNS)
+
+
+def compress_repeats(text: str, threshold: int = REPEAT_THRESHOLD) -> str:
+    """동일 문장이 threshold회 이상 등장하는 텍스트를 한 줄로 압축."""
+    if not text:
+        return text
+    lines = text.split("\n")
+    counter: Counter[str] = Counter(line.strip() for line in lines if line.strip())
+    if not counter:
+        return text
+    top_line, top_count = counter.most_common(1)[0]
+    if top_count < threshold:
+        return text
+    compressed: list[str] = []
+    placed = False
+    for line in lines:
+        if line.strip() == top_line:
+            if not placed:
+                compressed.append(f"{top_line} (placeholder × {top_count}회 반복)")
+                placed = True
+        else:
+            compressed.append(line)
+    return "\n".join(compressed)
+
+
+def extract_page_info(node: dict[str, Any]) -> dict[str, str]:
+    """``page info`` 프레임에서 라벨(weight≥700) / 값(weight<700) 페어를 dict로 수집."""
+    info: dict[str, str] = {}
+
+    def visit_group(group: dict[str, Any]) -> None:
+        label: str | None = None
+        value: str | None = None
+        for child in group.get("children") or []:
+            if child.get("type") != "TEXT":
+                continue
+            style = child.get("style") or {}
+            weight = style.get("fontWeight") or 400
+            chars = (child.get("characters") or "").strip()
+            if weight >= 700:
+                label = chars
+            else:
+                value = chars
+        if label and label.lower() != "page info":
+            info[label.lower()] = value or ""
+
+    def walk_for_groups(n: dict[str, Any]) -> None:
+        for child in n.get("children") or []:
+            name = child.get("name", "")
+            if name.startswith("Group "):
+                visit_group(child)
+            else:
+                walk_for_groups(child)
+
+    walk_for_groups(node)
+    return info
+
+
 def walk(
     node: dict[str, Any],
     parent_path: list[str],
@@ -58,6 +161,9 @@ def walk(
     include_hidden: bool,
     texts: list[dict[str, Any]],
     images: list[str],
+    page_info: dict[str, str],
+    noise_frame_ids: set[str],
+    current_frame_id: str | None,
 ) -> None:
     node_id = node.get("id", "")
     if node_id in exclude_ids:
@@ -68,16 +174,29 @@ def walk(
     name = node.get("name", "")
     node_type = node.get("type", "")
 
+    if name in PAGE_INFO_FRAME_NAMES:
+        page_info.update(extract_page_info(node))
+        return
+
+    if is_noise_frame(name):
+        return
+
     if node_type == "TEXT":
+        chars = node.get("characters") or ""
+        if is_noise_text(chars):
+            if current_frame_id:
+                noise_frame_ids.add(current_frame_id)
+            return
         style = node.get("style") or {}
         texts.append(
             {
                 "id": node_id,
                 "path": list(parent_path),
                 "name": name,
-                "characters": node.get("characters", ""),
+                "characters": compress_repeats(chars),
                 "font_size": style.get("fontSize"),
                 "font_weight": style.get("fontWeight"),
+                "parent_frame_id": current_frame_id,
             }
         )
 
@@ -85,8 +204,19 @@ def walk(
         images.append(node_id)
 
     next_path = parent_path + ([name] if name and node_type != "TEXT" else [])
+    new_frame_id = current_frame_id if node_type == "TEXT" else (node_id or current_frame_id)
     for child in node.get("children") or []:
-        walk(child, next_path, exclude_ids, include_hidden, texts, images)
+        walk(
+            child,
+            next_path,
+            exclude_ids,
+            include_hidden,
+            texts,
+            images,
+            page_info,
+            noise_frame_ids,
+            new_frame_id,
+        )
 
 
 def render_texts_md(label: str, node_id: str, texts: list[dict[str, Any]]) -> str:
@@ -170,7 +300,34 @@ def process_node(
     document = ((tree.get("nodes") or {}).get(node_id) or {}).get("document") or {}
     texts: list[dict[str, Any]] = []
     images: list[str] = []
-    walk(document, [], exclude_ids, include_hidden, texts, images)
+    page_info: dict[str, str] = {}
+    noise_frame_ids: set[str] = set()
+    walk(
+        document,
+        [],
+        exclude_ids,
+        include_hidden,
+        texts,
+        images,
+        page_info,
+        noise_frame_ids,
+        current_frame_id=None,
+    )
+
+    if noise_frame_ids:
+        before = len(texts)
+        texts = [t for t in texts if t.get("parent_frame_id") not in noise_frame_ids]
+        removed = before - len(texts)
+        if removed:
+            print(
+                f"[extract]   푸터/노이즈 frame 후처리: 텍스트 {removed}건 제거",
+                file=sys.stderr,
+            )
+
+    if page_info:
+        (node_dir / "page_info.json").write_text(
+            json.dumps(page_info, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
 
     (node_dir / "texts.md").write_text(
         render_texts_md(label, node_id, texts), encoding="utf-8"
@@ -189,7 +346,8 @@ def process_node(
                 download_to(url, node_dir / "images" / f"{safe_node_id(img_id)}.png")
 
     print(
-        f"[extract]   texts={len(texts)} images={len(images)} → {node_dir}",
+        f"[extract]   texts={len(texts)} images={len(images)} "
+        f"page_info_keys={list(page_info.keys()) or '-'} → {node_dir}",
         file=sys.stderr,
     )
 
@@ -201,11 +359,12 @@ def process_node(
         "image_count": len(images),
         "exclude_node_ids": sorted(exclude_ids),
         "exclude_notes": node_cfg.get("exclude_notes") or [],
+        "page_info": page_info,
     }
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Figma 노드 추출 (text/image)")
+    parser = argparse.ArgumentParser(description="Figma 노드 추출 (text/image + page_info)")
     parser.add_argument("--config", required=True, help="figma-prd.config.json 경로")
     parser.add_argument(
         "--include-hidden",

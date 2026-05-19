@@ -30,6 +30,7 @@ Figma 기획서 → PRD 마크다운 정제 스킬.
 - **모드 분기**: `backend | frontend | both`. 모드별로 분석 프롬프트·PRD 템플릿이 다름.
 - **노드별 제외**: `exclude_node_ids`로 트리 가지치기 + `exclude_notes` 자연어 사유 첨부.
 - **숨김 노드(`hidden=true`) 자동 필터링** ("디스크립션입니다." 같은 placeholder 방지).
+- **노이즈/메타 분리 (고정 동작, config 옵션 없음)**: 디자인 메타(`page info` 프레임 — project/date/author/screen/screen id)는 별도 페이지 메타로 추출되어 노드 디렉터리 `page_info.json` + PRD 노드 섹션 상단 "페이지 메타" 한 줄에 표시. 회사 공통 푸터(저작권·주소·전화/이메일)·번호 매기기 ellipse·디자인 시스템 데모는 자동 제거. 동일 줄 5회 이상 반복되는 placeholder는 `(placeholder × N회 반복)` 한 줄로 압축.
 - **재실행 친화**: config 파일로 입력을 고정해 Figma 버전 갱신 시 동일 명령으로 재추출 가능.
 
 ## 사용법
