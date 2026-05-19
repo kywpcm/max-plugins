@@ -1,0 +1,205 @@
+#!/usr/bin/env python3
+"""figma-prd 스킬 — 합성 단계.
+
+extract.summary.json + 노드별 texts.md / analysis.{mode}.md / 이미지 자료를
+모드별 PRD 템플릿에 채워 최종 prd.md(또는 prd.{mode}.md)를 만든다.
+"""
+from __future__ import annotations
+
+import argparse
+import datetime
+import json
+import re
+import sys
+from collections import Counter
+from pathlib import Path
+from typing import Any
+
+
+SKILL_DIR = Path(__file__).resolve().parent.parent  # skills/figma-prd/
+TEMPLATE_DIR = SKILL_DIR / "templates"
+
+
+def safe_node_id(node_id: str) -> str:
+    return node_id.replace(":", "-")
+
+
+def figma_node_url(file_key: str, node_id: str) -> str:
+    return f"https://www.figma.com/design/{file_key}?node-id={safe_node_id(node_id)}&m=dev"
+
+
+def relpath(target: Path, base: Path) -> str:
+    try:
+        return str(target.relative_to(base))
+    except ValueError:
+        return str(target)
+
+
+def collect_glossary_terms(texts_paths: list[Path]) -> list[tuple[str, int]]:
+    # 대문자 약어/식별자/하이픈+숫자 패턴 (예: UMS, AES-256, SHA-256, WEB_LGN_009, UMS-API-001)
+    pattern = re.compile(r"\b(?:[A-Z][A-Z0-9_]{2,}(?:-[A-Z0-9]+)*|[A-Z]+-\d+)\b")
+    counter: Counter[str] = Counter()
+    for p in texts_paths:
+        if not p.exists():
+            continue
+        for match in pattern.findall(p.read_text(encoding="utf-8")):
+            counter[match] += 1
+    return [(term, count) for term, count in counter.most_common() if count >= 2]
+
+
+def render_node_section(
+    index: int,
+    file_key: str,
+    node_entry: dict[str, Any],
+    mode: str,
+    output_root: Path,
+) -> tuple[str, str]:
+    node_id = node_entry["node_id"]
+    label = node_entry["label"]
+    node_dir = Path(node_entry["node_dir"])
+
+    anchor = f"node-{safe_node_id(node_id)}"
+
+    lines: list[str] = [
+        f'## {index}. {label} <a id="{anchor}"></a>',
+        "",
+        f"- **노드 ID**: `{node_id}`",
+        f"- **Figma 노드 URL**: {figma_node_url(file_key, node_id)}",
+        f"- **로컬 경로**: `{relpath(node_dir, output_root)}/`",
+    ]
+    excl_ids = node_entry.get("exclude_node_ids") or []
+    excl_notes = node_entry.get("exclude_notes") or []
+    if excl_ids or excl_notes:
+        lines.append("- **제외 처리**:")
+        for eid in excl_ids:
+            lines.append(f"  - `{eid}` (트리 가지치기)")
+        for note in excl_notes:
+            lines.append(f"  - {note}")
+    lines.append("")
+
+    # 1) 원문 (texts.md)
+    lines.append(f"### {index}.1 원문 정책·설명 (Figma `characters`)")
+    lines.append("")
+    texts_md = node_dir / "texts.md"
+    if texts_md.exists():
+        lines.append(texts_md.read_text(encoding="utf-8").rstrip())
+    else:
+        lines.append("_texts.md 없음._")
+    lines.append("")
+
+    # 2) 시각 자료
+    lines.append(f"### {index}.2 시각 자료")
+    lines.append("")
+    screenshot = node_dir / "screenshot.png"
+    if screenshot.exists():
+        lines.append(f"![{label} screenshot]({relpath(screenshot, output_root)})")
+        lines.append("")
+    images_dir = node_dir / "images"
+    if images_dir.exists():
+        for img in sorted(images_dir.glob("*.png")):
+            lines.append(f"![image {img.stem}]({relpath(img, output_root)})")
+            lines.append("")
+
+    # 3) 분석 결과
+    lines.append(f"### {index}.3 {mode} 요구사항 (분석)")
+    lines.append("")
+    analysis_path = node_dir / f"analysis.{mode}.md"
+    if analysis_path.exists():
+        lines.append(analysis_path.read_text(encoding="utf-8").rstrip())
+    else:
+        lines.append(
+            f"_{analysis_path.name} 없음 — 분석 단계가 아직 수행되지 않았거나 실패했습니다._"
+        )
+    lines.append("")
+
+    return anchor, "\n".join(lines)
+
+
+def build_prd(summary: dict[str, Any], mode: str) -> str:
+    file_key = summary["file_key"]
+    context = summary.get("context") or ""
+    output_dir = Path(summary["output_dir"])
+    nodes = summary["nodes"]
+
+    title = context or file_key
+    generated_at = datetime.datetime.now().astimezone().isoformat()
+    figma_url = f"https://www.figma.com/design/{file_key}"
+
+    sections: list[str] = []
+    toc_lines: list[str] = []
+    texts_paths: list[Path] = []
+    for i, node_entry in enumerate(nodes, start=1):
+        anchor, sec = render_node_section(i, file_key, node_entry, mode, output_dir)
+        sections.append(sec)
+        toc_lines.append(f"{i}. [{node_entry['label']}](#{anchor})")
+        texts_paths.append(Path(node_entry["node_dir"]) / "texts.md")
+
+    glossary = collect_glossary_terms(texts_paths)
+    glossary_md = (
+        "\n".join(f"- `{term}` — {count}회 등장" for term, count in glossary)
+        if glossary
+        else "_자동 수집된 용어 없음._"
+    )
+
+    extract_meta = "\n".join(
+        f"- `{n['node_id']}` — label: {n['label']} / texts: {n['text_count']} / images: {n['image_count']}"
+        for n in nodes
+    )
+
+    template = (TEMPLATE_DIR / f"prd.{mode}.template.md").read_text(encoding="utf-8")
+    return (
+        template.replace("{{TITLE}}", title)
+        .replace("{{GENERATED_AT}}", generated_at)
+        .replace("{{FIGMA_FILE_URL}}", figma_url)
+        .replace("{{NODE_COUNT}}", str(len(nodes)))
+        .replace("{{CONTEXT}}", context or "_없음_")
+        .replace("{{TOC}}", "\n".join(toc_lines))
+        .replace("{{NODE_SECTIONS}}", "\n\n".join(sections))
+        .replace("{{GLOSSARY}}", glossary_md)
+        .replace("{{EXTRACT_META}}", extract_meta)
+    )
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        description="figma-prd 합성 — texts + analysis → prd.md"
+    )
+    parser.add_argument("--config", required=True, help="figma-prd.config.json 경로")
+    args = parser.parse_args()
+
+    cfg = json.loads(Path(args.config).read_text(encoding="utf-8"))
+    file_key = cfg["file_key"]
+    output_dir = Path(cfg.get("output_dir", "./prd-out")).resolve()
+    file_root = output_dir / file_key
+
+    summary_path = file_root / "extract.summary.json"
+    if not summary_path.exists():
+        print(
+            f"ERROR: {summary_path} 없음. 먼저 extract.py를 실행하세요.",
+            file=sys.stderr,
+        )
+        sys.exit(2)
+    summary = json.loads(summary_path.read_text(encoding="utf-8"))
+
+    mode = cfg.get("mode", "backend")
+    if mode == "both":
+        for sub in ("backend", "frontend"):
+            md = build_prd(summary, sub)
+            out = file_root / f"prd.{sub}.md"
+            out.write_text(md, encoding="utf-8")
+            print(f"[synthesize] {sub} → {out}", file=sys.stderr)
+    elif mode in ("backend", "frontend"):
+        md = build_prd(summary, mode)
+        out = file_root / "prd.md"
+        out.write_text(md, encoding="utf-8")
+        print(f"[synthesize] {mode} → {out}", file=sys.stderr)
+    else:
+        print(
+            f"ERROR: unknown mode '{mode}'. backend|frontend|both 중 하나여야 합니다.",
+            file=sys.stderr,
+        )
+        sys.exit(2)
+
+
+if __name__ == "__main__":
+    main()
