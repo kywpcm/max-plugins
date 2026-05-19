@@ -133,7 +133,15 @@ export FIGMA_TOKEN=figd_xxx   # Figma 계정 설정 → Personal access tokens
    - `{{NODE_DIR}}` (절대 경로)
    - `{{EXCLUDE_NOTES}}`
    - `{{CONTEXT}}`
-   서브에이전트는 디렉터리 내 `texts.md`·`screenshot.png`·`images/*.png`를 Read로 읽고 모드별 분석을 수행해 결과를 `{node_dir}/analysis.{mode}.md`(또는 `images/{id}.analysis.{mode}.md`)에 저장한 뒤 **짧은 요약 보고**만 반환한다.
+
+   서브에이전트는 디렉터리 내 `texts.md`·`screenshot.png`·`images/*.png`를 Read로 읽고 모드별 분석을 수행한다. 결과 처리는 다음 순서로:
+   1. **1순위**: `Write` 도구로 `{node_dir}/analysis.{mode}.md` 에 직접 저장 → 메인에는 짧은 요약 보고만 반환 (메인 컨텍스트 보호).
+   2. **fallback**: 환경 권한 정책으로 Write가 차단되면 분석 마크다운 본문 전체를 반환. 본문 외 군더더기(설명·코드펜스) 없이 `# 분석 — {LABEL}` 로 시작하는 마크다운 그대로 반환.
+
+   메인 컨트롤러는 각 Agent 응답 처리:
+   - Bash 또는 Read로 `{node_dir}/analysis.{mode}.md` 존재 여부 확인.
+   - 파일이 있으면 통과.
+   - **없으면 Agent 응답 본문에서 `# 분석 —` 이하 마크다운을 추출해 메인에서 `Write` 로 저장**. 이 fallback 덕에 서브에이전트 Write 차단 환경에서도 일관 동작.
 
    노드들이 독립적이므로 **한 메시지에 여러 Agent 호출**로 병렬 처리한다 (모드가 `both`면 노드당 2개).
 
