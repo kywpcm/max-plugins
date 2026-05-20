@@ -186,18 +186,8 @@ def render_node_section(
             lines.append(f"  - {note}")
     lines.append("")
 
-    # 1) 원문 (texts.md)
-    lines.append(f"### {index}.1 원문 정책·설명 (Figma `characters`)")
-    lines.append("")
-    texts_md = node_dir / "texts.md"
-    if texts_md.exists():
-        lines.append(texts_md.read_text(encoding="utf-8").rstrip())
-    else:
-        lines.append("_texts.md 없음._")
-    lines.append("")
-
-    # 2) 시각 자료
-    lines.append(f"### {index}.2 시각 자료")
+    # 1) 시각 자료
+    lines.append(f"### {index}.1 시각 자료")
     lines.append("")
     screenshot = node_dir / "screenshot.png"
     if screenshot.exists():
@@ -209,8 +199,8 @@ def render_node_section(
             lines.append(f"![image {img.stem}]({relpath(img, output_root)})")
             lines.append("")
 
-    # 3) 분석 결과
-    lines.append(f"### {index}.3 {mode} 요구사항 (분석)")
+    # 2) 분석 결과
+    lines.append(f"### {index}.2 {mode} 요구사항 (분석)")
     lines.append("")
     analysis_path = node_dir / f"analysis.{mode}.md"
     if analysis_path.exists():

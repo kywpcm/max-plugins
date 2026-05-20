@@ -2,26 +2,20 @@
 """figma-prd 스킬 — 추출 단계.
 
 Figma REST API로 지정 노드들의 트리·텍스트·이미지를 결정적으로 수집한다.
-다음 4가지는 추출 단계에서 자동 처리되며 config로 노출되지 않는다:
-
-  1. ``page info`` 프레임은 본문에서 빼고 ``page_info`` 메타 dict로 별도 수집.
-  2. 노이즈 프레임(라디오 데모, 번호 매기기 ellipse 등)은 가지치기.
-  3. 푸터·저작권·주소·연락처 같은 텍스트는 휴리스틱으로 스킵하고,
-     같은 부모 프레임 안의 다른 텍스트도 함께 제거.
-  4. 동일 줄이 5회 이상 반복되는 placeholder는 한 줄로 압축.
+``page info`` 프레임은 본문 texts에서 빼고 ``page_info`` 메타 dict로 별도 수집한다
+(노드 섹션 상단 "페이지 메타" 표시용). 그 외 노드는 ``exclude_node_ids`` 와
+``visible=false`` 필터만 적용하고, 트리 그대로 ``texts.md`` 로 직렬화한다.
 """
 from __future__ import annotations
 
 import argparse
 import json
 import os
-import re
 import subprocess
 import sys
 import urllib.error
 import urllib.parse
 import urllib.request
-from collections import Counter
 from pathlib import Path
 from typing import Any
 
@@ -29,27 +23,6 @@ FIGMA_API = "https://api.figma.com/v1"
 
 # 페이지 메타: 자기 자신은 보존하되 본문 texts에서는 빠진다.
 PAGE_INFO_FRAME_NAMES = {"page info", "Page info"}
-
-# 가지치기 대상 프레임 이름 패턴.
-NOISE_FRAME_PATTERNS = [
-    re.compile(r"^라디오 조합$"),
-    re.compile(r"^Group 1000001436$"),  # 번호 매기기 ellipse 래퍼 (안에 "1","2","3" 단일 숫자)
-]
-
-# 텍스트 노드 자체를 스킵하는 휴리스틱.
-NOISE_TEXT_PATTERNS = [
-    re.compile(r"Copyright"),
-    re.compile(r"All rights reserved", re.IGNORECASE),
-    re.compile(r"Cheonan-Si", re.IGNORECASE),
-    re.compile(
-        r"^\s*\(?\d{5}\)?\s*"
-        r"(서울|부산|대구|인천|광주|대전|울산|세종|경기|강원|충북|충남|전북|전남|경북|경남|제주)"
-    ),
-    re.compile(r"\d{2,4}-\d{3,4}-\d{4}.*@.*\."),  # 전화+이메일 (예: 031-000-0000(abc@abc.com))
-]
-
-# 동일 줄 반복 압축 임계치.
-REPEAT_THRESHOLD = 5
 
 
 def find_project_root(start: Path) -> Path:
@@ -136,46 +109,6 @@ def has_image_fill(node: dict[str, Any]) -> bool:
     return any(isinstance(f, dict) and f.get("type") == "IMAGE" for f in fills)
 
 
-def is_noise_frame(name: str) -> bool:
-    if not name:
-        return False
-    return any(p.match(name) for p in NOISE_FRAME_PATTERNS)
-
-
-def is_noise_text(chars: str | None) -> bool:
-    if chars is None:
-        return True
-    stripped = chars.strip()
-    if not stripped:
-        return True
-    if len(stripped) <= 1 and stripped in {"-", "_", ".", "·"}:
-        return True
-    return any(p.search(stripped) for p in NOISE_TEXT_PATTERNS)
-
-
-def compress_repeats(text: str, threshold: int = REPEAT_THRESHOLD) -> str:
-    """동일 문장이 threshold회 이상 등장하는 텍스트를 한 줄로 압축."""
-    if not text:
-        return text
-    lines = text.split("\n")
-    counter: Counter[str] = Counter(line.strip() for line in lines if line.strip())
-    if not counter:
-        return text
-    top_line, top_count = counter.most_common(1)[0]
-    if top_count < threshold:
-        return text
-    compressed: list[str] = []
-    placed = False
-    for line in lines:
-        if line.strip() == top_line:
-            if not placed:
-                compressed.append(f"{top_line} (placeholder × {top_count}회 반복)")
-                placed = True
-        else:
-            compressed.append(line)
-    return "\n".join(compressed)
-
-
 def extract_page_info(node: dict[str, Any]) -> dict[str, str]:
     """``page info`` 프레임에서 라벨(weight≥700) / 값(weight<700) 페어를 dict로 수집."""
     info: dict[str, str] = {}
@@ -216,7 +149,6 @@ def walk(
     texts: list[dict[str, Any]],
     images: list[str],
     page_info: dict[str, str],
-    noise_frame_ids: set[str],
     current_frame_id: str | None,
 ) -> None:
     node_id = node.get("id", "")
@@ -232,22 +164,15 @@ def walk(
         page_info.update(extract_page_info(node))
         return
 
-    if is_noise_frame(name):
-        return
-
     if node_type == "TEXT":
         chars = node.get("characters") or ""
-        if is_noise_text(chars):
-            if current_frame_id:
-                noise_frame_ids.add(current_frame_id)
-            return
         style = node.get("style") or {}
         texts.append(
             {
                 "id": node_id,
                 "path": list(parent_path),
                 "name": name,
-                "characters": compress_repeats(chars),
+                "characters": chars,
                 "font_size": style.get("fontSize"),
                 "font_weight": style.get("fontWeight"),
                 "parent_frame_id": current_frame_id,
@@ -268,7 +193,6 @@ def walk(
             texts,
             images,
             page_info,
-            noise_frame_ids,
             new_frame_id,
         )
 
@@ -355,7 +279,6 @@ def process_node(
     texts: list[dict[str, Any]] = []
     images: list[str] = []
     page_info: dict[str, str] = {}
-    noise_frame_ids: set[str] = set()
     walk(
         document,
         [],
@@ -364,19 +287,8 @@ def process_node(
         texts,
         images,
         page_info,
-        noise_frame_ids,
         current_frame_id=None,
     )
-
-    if noise_frame_ids:
-        before = len(texts)
-        texts = [t for t in texts if t.get("parent_frame_id") not in noise_frame_ids]
-        removed = before - len(texts)
-        if removed:
-            print(
-                f"[extract]   푸터/노이즈 frame 후처리: 텍스트 {removed}건 제거",
-                file=sys.stderr,
-            )
 
     if page_info:
         (node_dir / "page_info.json").write_text(
