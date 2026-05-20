@@ -10,6 +10,7 @@ import argparse
 import datetime
 import json
 import re
+import subprocess
 import sys
 from collections import Counter
 from pathlib import Path
@@ -43,6 +44,52 @@ def render_page_info(page_info: dict[str, str]) -> str:
         if key not in PAGE_INFO_LABEL_MAP:
             parts.append(f"{key}={value or '-'}")
     return " · ".join(parts)
+
+
+def find_project_root(start: Path) -> Path:
+    """git working tree 루트를 반환. git이 아니면 ``start`` 그대로."""
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "--show-toplevel"],
+            cwd=str(start),
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+        if result.returncode == 0 and result.stdout.strip():
+            return Path(result.stdout.strip())
+    except (OSError, subprocess.SubprocessError):
+        pass
+    return start
+
+
+def discover_config(explicit: str | None) -> Path:
+    if explicit:
+        return Path(explicit).resolve()
+    cwd = Path.cwd()
+    candidates: list[Path] = [cwd / "figma-prd.config.json"]
+    root = find_project_root(cwd)
+    if root.resolve() != cwd.resolve():
+        candidates.append(root / "figma-prd.config.json")
+    for c in candidates:
+        if c.exists():
+            return c.resolve()
+    tried = "\n  ".join(str(c) for c in candidates)
+    raise SystemExit(
+        "ERROR: figma-prd.config.json을 찾을 수 없습니다. "
+        "--config 로 명시하거나 프로젝트 루트에 두세요.\n  시도한 경로:\n  "
+        + tried
+    )
+
+
+def resolve_output_dir(cfg: dict[str, Any], config_path: Path) -> Path:
+    raw = cfg.get("output_dir")
+    config_dir = config_path.parent.resolve()
+    if raw:
+        p = Path(raw)
+        return p.resolve() if p.is_absolute() else (config_dir / p).resolve()
+    project_root = find_project_root(config_dir)
+    return (project_root / "docs" / "prd-out").resolve()
 
 
 def safe_node_id(node_id: str) -> str:
@@ -192,12 +239,19 @@ def main() -> None:
     parser = argparse.ArgumentParser(
         description="figma-prd 합성 — texts + analysis → prd.md"
     )
-    parser.add_argument("--config", required=True, help="figma-prd.config.json 경로")
+    parser.add_argument(
+        "--config",
+        default=None,
+        help="figma-prd.config.json 경로 (생략 시 cwd 또는 git 루트에서 자동 탐색)",
+    )
     args = parser.parse_args()
 
-    cfg = json.loads(Path(args.config).read_text(encoding="utf-8"))
+    cfg_path = discover_config(args.config)
+    cfg = json.loads(cfg_path.read_text(encoding="utf-8"))
     file_key = cfg["file_key"]
-    output_dir = Path(cfg.get("output_dir", "./prd-out")).resolve()
+    output_dir = resolve_output_dir(cfg, cfg_path)
+    print(f"[synthesize] config: {cfg_path}", file=sys.stderr)
+    print(f"[synthesize] output_dir: {output_dir}", file=sys.stderr)
     file_root = output_dir / file_key
 
     summary_path = file_root / "extract.summary.json"

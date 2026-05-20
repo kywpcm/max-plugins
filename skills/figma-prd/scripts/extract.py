@@ -16,6 +16,7 @@ import argparse
 import json
 import os
 import re
+import subprocess
 import sys
 import urllib.error
 import urllib.parse
@@ -49,6 +50,59 @@ NOISE_TEXT_PATTERNS = [
 
 # 동일 줄 반복 압축 임계치.
 REPEAT_THRESHOLD = 5
+
+
+def find_project_root(start: Path) -> Path:
+    """git working tree 루트를 반환. git이 아니면 ``start`` 그대로."""
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "--show-toplevel"],
+            cwd=str(start),
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+        if result.returncode == 0 and result.stdout.strip():
+            return Path(result.stdout.strip())
+    except (OSError, subprocess.SubprocessError):
+        pass
+    return start
+
+
+def discover_config(explicit: str | None) -> Path:
+    """--config 인자가 없으면 cwd → git 루트 순으로 figma-prd.config.json 탐색."""
+    if explicit:
+        return Path(explicit).resolve()
+    cwd = Path.cwd()
+    candidates: list[Path] = [cwd / "figma-prd.config.json"]
+    root = find_project_root(cwd)
+    if root.resolve() != cwd.resolve():
+        candidates.append(root / "figma-prd.config.json")
+    for c in candidates:
+        if c.exists():
+            return c.resolve()
+    tried = "\n  ".join(str(c) for c in candidates)
+    raise SystemExit(
+        "ERROR: figma-prd.config.json을 찾을 수 없습니다. "
+        "--config 로 명시하거나 프로젝트 루트에 두세요.\n  시도한 경로:\n  "
+        + tried
+    )
+
+
+def resolve_output_dir(cfg: dict[str, Any], config_path: Path) -> Path:
+    """output_dir 결정 우선순위:
+
+    1. config의 ``output_dir`` 절대 경로 → 그대로.
+    2. config의 ``output_dir`` 상대 경로 → config 파일 디렉터리 기준.
+    3. 명시 없음 → git 프로젝트 루트의 ``docs/prd-out``. git이 아니면 config 디렉터리.
+    """
+    raw = cfg.get("output_dir")
+    config_dir = config_path.parent.resolve()
+    if raw:
+        p = Path(raw)
+        return p.resolve() if p.is_absolute() else (config_dir / p).resolve()
+    project_root = find_project_root(config_dir)
+    return (project_root / "docs" / "prd-out").resolve()
 
 
 def http_get(url: str, headers: dict[str, str] | None = None) -> bytes:
@@ -365,7 +419,11 @@ def process_node(
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Figma 노드 추출 (text/image + page_info)")
-    parser.add_argument("--config", required=True, help="figma-prd.config.json 경로")
+    parser.add_argument(
+        "--config",
+        default=None,
+        help="figma-prd.config.json 경로 (생략 시 cwd 또는 git 루트에서 자동 탐색)",
+    )
     parser.add_argument(
         "--include-hidden",
         action="store_true",
@@ -378,9 +436,12 @@ def main() -> None:
         print("ERROR: 환경 변수 FIGMA_TOKEN이 필요합니다.", file=sys.stderr)
         sys.exit(2)
 
-    cfg = json.loads(Path(args.config).read_text(encoding="utf-8"))
+    cfg_path = discover_config(args.config)
+    cfg = json.loads(cfg_path.read_text(encoding="utf-8"))
     file_key = cfg["file_key"]
-    output_dir = Path(cfg.get("output_dir", "./prd-out")).resolve()
+    output_dir = resolve_output_dir(cfg, cfg_path)
+    print(f"[extract] config: {cfg_path}", file=sys.stderr)
+    print(f"[extract] output_dir: {output_dir}", file=sys.stderr)
     nodes = cfg.get("nodes") or []
     if not nodes:
         print("ERROR: config.nodes가 비어 있습니다.", file=sys.stderr)

@@ -40,9 +40,14 @@ Figma 기획서 → PRD 마크다운 정제 스킬.
 ```bash
 export FIGMA_TOKEN=figd_xxx   # Figma 계정 설정 → Personal access tokens
 
-# 작업 디렉터리에 figma-prd.config.json 작성 (templates/config.example.json 참고)
+# 프로젝트 루트(예: ~/workspace/your-project/)에 figma-prd.config.json 작성.
+# 결과 PRD는 자동으로 <project_root>/docs/prd-out/ 에 생성된다.
+/figma-prd
+# 또는 명시적으로:
 /figma-prd --config figma-prd.config.json
 ```
+
+`--config` 인자가 없으면 cwd → git 프로젝트 루트 순으로 `figma-prd.config.json`을 자동 탐색한다.
 
 ### 방식 B — 대화형 (탐색·일회성)
 
@@ -63,7 +68,6 @@ export FIGMA_TOKEN=figd_xxx   # Figma 계정 설정 → Personal access tokens
 {
   "mode": "backend",                          // "backend" | "frontend" | "both"
   "file_key": "2CqOVKu1KasCF5K2hDWN2G",
-  "output_dir": "./prd-out",
   "context": "프로젝트 컨텍스트 한 줄 — PRD 헤더에 들어감",
   "nodes": [
     {
@@ -78,6 +82,15 @@ export FIGMA_TOKEN=figd_xxx   # Figma 계정 설정 → Personal access tokens
 ```
 
 `templates/config.example.json`을 복사해 시작.
+
+### 경로 규약
+
+- **config 위치**: 작업 프로젝트 루트의 `figma-prd.config.json`. 인자 생략 시 cwd → git 루트 순으로 자동 탐색.
+- **output_dir 기본값**: `<project_root>/docs/prd-out` (config에 `output_dir`를 명시하지 않으면 이 경로 사용).
+- **`output_dir` 명시 시**:
+  - 절대 경로 → 그대로 사용.
+  - 상대 경로 → config 파일이 있는 디렉터리 기준으로 해석 (cwd 아님).
+- **권장**: `.gitignore`에 `docs/prd-out/` 추가. PRD는 자동 생성물이라 commit 대상이 아닌 경우가 일반적.
 
 ## 모드별 추출 내용
 
