@@ -46,6 +46,40 @@ def render_page_info(page_info: dict[str, str]) -> str:
     return " · ".join(parts)
 
 
+_INVALID_FILENAME_RE = re.compile(r'[\\/:*?"<>|]')
+
+
+def auto_title(summary: dict[str, Any]) -> str:
+    """PRD 파일명·헤더용 짧은 제목 자동 도출.
+
+    1순위: ``context``의 첫 마침표/줄바꿈 전 부분
+    2순위: 첫 노드 라벨 (+ 추가 노드 수)
+    3순위: ``"PRD"`` 고정
+    """
+    context = (summary.get("context") or "").strip()
+    if context:
+        first = re.split(r"[.\n]", context, maxsplit=1)[0].strip()
+        if first:
+            return first
+    nodes = summary.get("nodes") or []
+    if nodes:
+        label = (nodes[0].get("label") or "").strip()
+        if label:
+            extra = len(nodes) - 1
+            return f"{label} 외 {extra}건" if extra > 0 else label
+    return "PRD"
+
+
+def sanitize_filename(name: str) -> str:
+    sanitized = _INVALID_FILENAME_RE.sub("_", name)
+    sanitized = re.sub(r"\s+", " ", sanitized).strip(" .")
+    return sanitized or "PRD"
+
+
+def output_filename(title: str, mode: str) -> str:
+    return f"{sanitize_filename(title)} ({mode}).md"
+
+
 def find_project_root(start: Path) -> Path:
     """git working tree 루트를 반환. git이 아니면 ``start`` 그대로."""
     try:
@@ -264,15 +298,17 @@ def main() -> None:
     summary = json.loads(summary_path.read_text(encoding="utf-8"))
 
     mode = cfg.get("mode", "backend")
+    title = auto_title(summary)
+    print(f"[synthesize] title: {title}", file=sys.stderr)
     if mode == "both":
         for sub in ("backend", "frontend"):
             md = build_prd(summary, sub)
-            out = file_root / f"prd.{sub}.md"
+            out = file_root / output_filename(title, sub)
             out.write_text(md, encoding="utf-8")
             print(f"[synthesize] {sub} → {out}", file=sys.stderr)
     elif mode in ("backend", "frontend"):
         md = build_prd(summary, mode)
-        out = file_root / "prd.md"
+        out = file_root / output_filename(title, mode)
         out.write_text(md, encoding="utf-8")
         print(f"[synthesize] {mode} → {out}", file=sys.stderr)
     else:

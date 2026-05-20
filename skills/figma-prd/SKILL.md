@@ -182,17 +182,25 @@ export FIGMA_TOKEN=figd_xxx   # Figma 계정 설정 → Personal access tokens
 
 ```
 {output_dir}/{file_key}/
-├── prd.md                                   # 최종 PRD (모드 single)
-├── prd.backend.md / prd.frontend.md          # 모드 both 시
+├── {제목} (backend).md                       # 모드 single, 예: "천안형GPT 사용자 관리·로그인 흐름 (backend).md"
+├── {제목} (backend).md + {제목} (frontend).md # 모드 both
 └── {node_id_safe}/
     ├── tree.json
     ├── texts.md
+    ├── page_info.json                       # 페이지 메타 (있는 노드만)
     ├── screenshot.png
     ├── images/
     │   ├── {image_node_id}.png
     │   └── {image_node_id}.analysis.{mode}.md
     └── analysis.{mode}.md                   # 노드 전체에 대한 모드별 분석
 ```
+
+**PRD 파일명 자동 도출**:
+1. `context`의 첫 마침표/줄바꿈 전 부분 → 제목.
+2. context가 비었으면 첫 노드 라벨 (`+ 외 N건`).
+3. 둘 다 없으면 `PRD`.
+
+파일 시스템 금지 문자(`\\/:*?"<>|`)는 `_`로 치환. config 옵션으로 파일명 override는 없음 (자동만).
 
 ## 자주 묻는 것
 
