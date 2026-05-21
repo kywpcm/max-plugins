@@ -126,6 +126,11 @@ def resolve_output_dir(cfg: dict[str, Any], config_path: Path) -> Path:
     return (project_root / "docs" / "prd-out").resolve()
 
 
+def resolve_prd_dir_name(cfg: dict[str, Any]) -> str:
+    """PRD 출력 디렉터리 이름. task_name 명시 시 그것을, 없으면 file_key fallback."""
+    return cfg.get("task_name") or cfg["file_key"]
+
+
 def safe_node_id(node_id: str) -> str:
     return node_id.replace(":", "-")
 
@@ -274,9 +279,11 @@ def main() -> None:
     cfg = json.loads(cfg_path.read_text(encoding="utf-8"))
     file_key = cfg["file_key"]
     output_dir = resolve_output_dir(cfg, cfg_path)
+    prd_dir_name = resolve_prd_dir_name(cfg)
     print(f"[synthesize] config: {cfg_path}", file=sys.stderr)
     print(f"[synthesize] output_dir: {output_dir}", file=sys.stderr)
-    file_root = output_dir / file_key
+    print(f"[synthesize] prd_dir_name: {prd_dir_name}", file=sys.stderr)
+    file_root = output_dir / prd_dir_name
 
     summary_path = file_root / "extract.summary.json"
     if not summary_path.exists():

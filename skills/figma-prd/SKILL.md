@@ -69,6 +69,7 @@ export FIGMA_TOKEN=figd_xxx   # Figma 계정 설정 → Personal access tokens
 {
   "mode": "backend",                          // "backend" | "frontend" | "both"
   "file_key": "2CqOVKu1KasCF5K2hDWN2G",
+  "task_name": "로그인 및 인증",                 // 결과 디렉터리 이름. 생략 시 file_key 사용.
   "context": "프로젝트 컨텍스트 한 줄 — PRD 헤더에 들어감",
   "nodes": [
     {
@@ -91,6 +92,7 @@ export FIGMA_TOKEN=figd_xxx   # Figma 계정 설정 → Personal access tokens
 - **`output_dir` 명시 시**:
   - 절대 경로 → 그대로 사용.
   - 상대 경로 → config 파일이 있는 디렉터리 기준으로 해석 (cwd 아님).
+- **`task_name`**: 결과 디렉터리 이름. 동일 Figma 파일을 작업 의미 단위(예: "로그인 및 인증", "사용자 관리")로 구분할 때 사용. 생략하면 `file_key`로 fallback (하위 호환). 최종 경로는 `{output_dir}/{task_name 또는 file_key}/`.
 - **권장**: `.gitignore`에 `docs/prd-out/` 추가. PRD는 자동 생성물이라 commit 대상이 아닌 경우가 일반적.
 
 ## 모드별 추출 내용
@@ -131,9 +133,9 @@ export FIGMA_TOKEN=figd_xxx   # Figma 계정 설정 → Personal access tokens
      --config <config.json> \
      [--include-hidden]
    ```
-   각 노드별로 다음을 생성:
+   각 노드별로 다음을 생성 (`{task_name 또는 file_key}` 는 config에서 결정):
    ```
-   {output_dir}/{file_key}/{node_id_safe}/
+   {output_dir}/{task_name 또는 file_key}/{node_id_safe}/
      tree.json            # /v1/files/{k}/nodes 원본
      texts.md             # 부모 frame 계층 + 굵은 글씨 헤더 추론
      screenshot.png       # 노드 전체 스냅샷
@@ -165,7 +167,7 @@ export FIGMA_TOKEN=figd_xxx   # Figma 계정 설정 → Personal access tokens
    python3 ${SKILL_DIR}/scripts/synthesize.py \
      --config <config.json>
    ```
-   `texts.md` + 각 노드의 `analysis.{mode}.md`를 `templates/prd.{mode}.template.md` 골격에 채워 `{output_dir}/{file_key}/prd.md` (또는 `prd.backend.md`/`prd.frontend.md`)로 합성.
+   `texts.md` + 각 노드의 `analysis.{mode}.md`를 `templates/prd.{mode}.template.md` 골격에 채워 `{output_dir}/{task_name 또는 file_key}/prd.md` (또는 `prd.backend.md`/`prd.frontend.md`)로 합성.
 
 5. **마무리**
    - 결과 경로 안내.
@@ -173,16 +175,17 @@ export FIGMA_TOKEN=figd_xxx   # Figma 계정 설정 → Personal access tokens
 
 ## 인증
 
-- `FIGMA_TOKEN` (필수): Figma Personal Access Token.
+- **Figma Personal Access Token** (필수): 다음 두 곳 중 하나에 두면 됨. 우선순위는 env > config.
+  1. 환경 변수 `FIGMA_TOKEN` — 셸에 `export FIGMA_TOKEN=figd_...` 또는 `~/.zshrc`에 영구 등록. 모든 프로젝트에서 공유 가능.
+  2. config의 `figma_token` 필드 — 프로젝트별 토큰을 박아둘 때. config 파일은 `.gitignore`에 넣어 commit 금지.
   - 발급: Figma 웹 → 우측 상단 아바타 → Settings → Account → Personal access tokens → Generate new token.
   - 권한: 읽기 전용으로 충분.
-  - 셸에 `export FIGMA_TOKEN=figd_...` 또는 `~/.zshrc`에 영구 등록.
 - `ANTHROPIC_API_KEY`: **불필요**. 멀티모달 분석은 Claude Code Agent 도구 사용.
 
 ## 결과물 구조
 
 ```
-{output_dir}/{file_key}/
+{output_dir}/{task_name 또는 file_key}/
 ├── {제목} (backend).md                       # 모드 single, 예: "천안형GPT 사용자 관리·로그인 흐름 (backend).md"
 ├── {제목} (backend).md + {제목} (frontend).md # 모드 both
 └── {node_id_safe}/

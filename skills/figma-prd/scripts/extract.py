@@ -78,6 +78,11 @@ def resolve_output_dir(cfg: dict[str, Any], config_path: Path) -> Path:
     return (project_root / "docs" / "prd-out").resolve()
 
 
+def resolve_prd_dir_name(cfg: dict[str, Any]) -> str:
+    """PRD 출력 디렉터리 이름. task_name 명시 시 그것을, 없으면 file_key fallback."""
+    return cfg.get("task_name") or cfg["file_key"]
+
+
 def http_get(url: str, headers: dict[str, str] | None = None) -> bytes:
     req = urllib.request.Request(url, headers=headers or {})
     with urllib.request.urlopen(req, timeout=60) as resp:
@@ -256,6 +261,7 @@ def download_to(url: str, dest: Path) -> None:
 
 def process_node(
     file_key: str,
+    prd_dir_name: str,
     node_cfg: dict[str, Any],
     output_dir: Path,
     token: str,
@@ -265,7 +271,7 @@ def process_node(
     label = node_cfg.get("label", node_id)
     exclude_ids = {parse_node_id(x) for x in (node_cfg.get("exclude_node_ids") or [])}
 
-    node_dir = output_dir / file_key / safe_node_id(node_id)
+    node_dir = output_dir / prd_dir_name / safe_node_id(node_id)
     (node_dir / "images").mkdir(parents=True, exist_ok=True)
 
     print(f"[extract] node {node_id} ({label})", file=sys.stderr)
@@ -343,17 +349,21 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    token = os.environ.get("FIGMA_TOKEN")
-    if not token:
-        print("ERROR: 환경 변수 FIGMA_TOKEN이 필요합니다.", file=sys.stderr)
-        sys.exit(2)
-
     cfg_path = discover_config(args.config)
     cfg = json.loads(cfg_path.read_text(encoding="utf-8"))
+    token = os.environ.get("FIGMA_TOKEN") or cfg.get("figma_token")
+    if not token:
+        print(
+            "ERROR: FIGMA_TOKEN 환경 변수 또는 config.figma_token 필드가 필요합니다.",
+            file=sys.stderr,
+        )
+        sys.exit(2)
     file_key = cfg["file_key"]
     output_dir = resolve_output_dir(cfg, cfg_path)
+    prd_dir_name = resolve_prd_dir_name(cfg)
     print(f"[extract] config: {cfg_path}", file=sys.stderr)
     print(f"[extract] output_dir: {output_dir}", file=sys.stderr)
+    print(f"[extract] prd_dir_name: {prd_dir_name}", file=sys.stderr)
     nodes = cfg.get("nodes") or []
     if not nodes:
         print("ERROR: config.nodes가 비어 있습니다.", file=sys.stderr)
@@ -362,10 +372,10 @@ def main() -> None:
     summary: list[dict[str, Any]] = []
     for node_cfg in nodes:
         summary.append(
-            process_node(file_key, node_cfg, output_dir, token, args.include_hidden)
+            process_node(file_key, prd_dir_name, node_cfg, output_dir, token, args.include_hidden)
         )
 
-    summary_path = output_dir / file_key / "extract.summary.json"
+    summary_path = output_dir / prd_dir_name / "extract.summary.json"
     summary_path.parent.mkdir(parents=True, exist_ok=True)
     summary_path.write_text(
         json.dumps(
