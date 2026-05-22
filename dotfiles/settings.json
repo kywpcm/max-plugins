@@ -73,7 +73,6 @@
     "ralph-loop@claude-plugins-official": true,
     "ralph-skills@ralph-marketplace": true,
     "discord@claude-plugins-official": true,
-    "telegram@claude-plugins-official": true,
     "dotfiles-claude-code@max-plugins": true,
     "mafia-codereview@mafia-codereview-harness": true
   },

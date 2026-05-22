@@ -135,7 +135,7 @@ install.sh가 설치하는 항목:
 - `statusline-command.sh` — tmux 상태줄 스크립트
 - 훅 스크립트 — 위험 명령어 차단, 커밋 전 대화 저장
 - 플러그인 메타데이터 — installed_plugins.json, known_marketplaces.json
-- 채널 접근 설정 — Discord/Telegram access.json (기존 파일이 없을 때만)
+- 채널 접근 설정 — Discord access.json (기존 파일이 없을 때만)
 
 ### Step 7: 수동 설정 안내
 
@@ -150,15 +150,6 @@ echo "DISCORD_BOT_TOKEN=여기에_봇_토큰" > ~/.claude/channels/discord/.env
 
 # 2. 유저 ID 설정 — access.json의 allowFrom에 본인 Discord 유저 ID 추가
 # 예: "allowFrom": ["123456789012345678"]
-```
-
-Telegram:
-```bash
-# 1. 봇 토큰 설정
-echo "TELEGRAM_BOT_TOKEN=여기에_봇_토큰" > ~/.claude/channels/telegram/.env
-
-# 2. 유저 ID 설정 — access.json의 allowFrom에 본인 Telegram 유저 ID 추가
-# 예: "allowFrom": [8505525944]
 ```
 
 **플러그인 설정:**
@@ -188,7 +179,7 @@ settings.json의 enabledPlugins에서 실제 사용하지 않는 플러그인은
 [ -f ~/.claude/plugins/installed_plugins.json ] && echo "✅ installed_plugins.json" || echo "❌ installed_plugins.json"
 
 # 채널 설정 확인
-for ch in discord telegram; do
+for ch in discord; do
   [ -f ~/.claude/channels/$ch/access.json ] && echo "✅ $ch access.json" || echo "⚠️ $ch access.json (미설정)"
 done
 ```
@@ -202,7 +193,6 @@ done
 
 ⚠️ 수동 설정 필요:
   - Discord: ~/.claude/channels/discord/.env 에 봇 토큰 추가
-  - Telegram: ~/.claude/channels/telegram/.env 에 봇 토큰 추가
 
 환경을 변경한 후 repo에 반영하려면: /sync-env
 ```

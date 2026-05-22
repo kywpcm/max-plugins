@@ -10,7 +10,7 @@ description: >
   "claude 설정 업데이트", "claude 환경 반영", "claude 환경 업데이트" 시 사용합니다.
   shell/터미널 dotfiles(.zshrc/.tmux.conf 등)가 아닌 Claude Code 환경 전용입니다.
   순수 dotfiles를 repo로 올리려면 sync-dotfiles-env를 사용하세요.
-  새 플러그인 추가, 설정 변경, 새 채널(Discord/Telegram 등) 추가 후에도 사용하세요.
+  새 플러그인 추가, 설정 변경, 새 채널(Discord 등) 추가 후에도 사용하세요.
 user-invocable: true
 version: 0.1.0
 ---
@@ -91,8 +91,8 @@ ls "$REPO_DIR/dotfiles/meta/"*-access.json 2>/dev/null
 ```
 | 파일 | 상태 | 설명 |
 |------|------|------|
-| settings.json | 변경됨 | telegram 플러그인 추가, 훅 구조 변경 |
-| installed_plugins.json | 변경됨 | telegram 엔트리 추가 |
+| settings.json | 변경됨 | 새 플러그인 추가, 훅 구조 변경 |
+| installed_plugins.json | 변경됨 | 새 플러그인 엔트리 추가 |
 | CLAUDE.md | 동일 | - |
 ```
 

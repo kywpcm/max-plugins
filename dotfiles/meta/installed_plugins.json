@@ -68,15 +68,6 @@
         "lastUpdated": "2026-04-11T12:11:51.671Z"
       }
     ],
-    "telegram@claude-plugins-official": [
-      {
-        "scope": "user",
-        "installPath": "<HOME>/.claude/plugins/cache/claude-plugins-official/telegram/0.0.6",
-        "version": "0.0.6",
-        "installedAt": "2026-04-14T05:48:13.298Z",
-        "lastUpdated": "2026-04-17T01:36:58.602Z"
-      }
-    ],
     "dotfiles-claude-code@max-plugins": [
       {
         "scope": "user",
