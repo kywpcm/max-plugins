@@ -33,10 +33,10 @@
     "superpowers@claude-plugins-official": [
       {
         "scope": "user",
-        "installPath": "<HOME>/.claude/plugins/cache/claude-plugins-official/superpowers/5.0.7",
-        "version": "5.0.7",
+        "installPath": "<HOME>/.claude/plugins/cache/claude-plugins-official/superpowers/5.1.0",
+        "version": "5.1.0",
         "installedAt": "2026-04-03T06:27:35.493Z",
-        "lastUpdated": "2026-04-17T13:10:43.750Z",
+        "lastUpdated": "2026-05-20T02:32:11.785Z",
         "gitCommitSha": "b7a8f76985f1e93e75dd2f2a3b424dc731bd9d37"
       }
     ],
@@ -80,11 +80,21 @@
     "dotfiles-claude-code@max-plugins": [
       {
         "scope": "user",
-        "installPath": "<HOME>/.claude/plugins/cache/max-plugins/dotfiles-claude-code/1.6.0",
-        "version": "1.6.0",
+        "installPath": "<HOME>/.claude/plugins/cache/max-plugins/dotfiles-claude-code/1.7.3",
+        "version": "1.7.3",
         "installedAt": "2026-04-14T12:18:35.784Z",
-        "lastUpdated": "2026-04-24T04:40:13.900Z",
-        "gitCommitSha": "e4902396c6d71ea3dd3be7ae4f93aa086ef02f1b"
+        "lastUpdated": "2026-05-21T08:54:20.002Z",
+        "gitCommitSha": "7372a6cc161784b68ad0506ddcd80d708b524ff5"
+      }
+    ],
+    "mafia-codereview@mafia-codereview-harness": [
+      {
+        "scope": "user",
+        "installPath": "<HOME>/.claude/plugins/cache/mafia-codereview-harness/mafia-codereview/0.1.0",
+        "version": "0.1.0",
+        "installedAt": "2026-05-22T02:25:58.448Z",
+        "lastUpdated": "2026-05-22T02:25:58.448Z",
+        "gitCommitSha": "e175e342648fb0f9a9745f3b18346e406f0f7ceb"
       }
     ]
   }

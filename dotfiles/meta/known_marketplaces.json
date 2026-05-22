@@ -13,7 +13,7 @@
       "url": "https://github.com/snarktank/ralph.git"
     },
     "installLocation": "<HOME>/.claude/plugins/marketplaces/ralph-marketplace",
-    "lastUpdated": "2026-04-27T05:03:01.075Z",
+    "lastUpdated": "2026-05-22T02:17:30.836Z",
     "autoUpdate": true
   },
   "toby-plugins": {
@@ -30,7 +30,15 @@
       "repo": "kywpcm/max-plugins"
     },
     "installLocation": "<HOME>/.claude/plugins/marketplaces/max-plugins",
-    "lastUpdated": "2026-04-27T05:03:00.742Z",
+    "lastUpdated": "2026-05-22T02:17:30.106Z",
     "autoUpdate": true
+  },
+  "mafia-codereview-harness": {
+    "source": {
+      "source": "github",
+      "repo": "vibemafiaclub/mafia-codereview-harness"
+    },
+    "installLocation": "<HOME>/.claude/plugins/marketplaces/mafia-codereview-harness",
+    "lastUpdated": "2026-05-22T02:25:24.289Z"
   }
 }
