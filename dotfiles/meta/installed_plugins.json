@@ -59,23 +59,14 @@
         "gitCommitSha": "6c53cb0b831ebe8739c6a003e22af14902d8b0b5"
       }
     ],
-    "discord@claude-plugins-official": [
-      {
-        "scope": "user",
-        "installPath": "<HOME>/.claude/plugins/cache/claude-plugins-official/discord/0.0.4",
-        "version": "0.0.4",
-        "installedAt": "2026-04-11T12:11:51.671Z",
-        "lastUpdated": "2026-04-11T12:11:51.671Z"
-      }
-    ],
     "dotfiles-claude-code@max-plugins": [
       {
         "scope": "user",
-        "installPath": "<HOME>/.claude/plugins/cache/max-plugins/dotfiles-claude-code/1.7.3",
-        "version": "1.7.3",
+        "installPath": "<HOME>/.claude/plugins/cache/max-plugins/dotfiles-claude-code/1.10.0",
+        "version": "1.10.0",
         "installedAt": "2026-04-14T12:18:35.784Z",
-        "lastUpdated": "2026-05-21T08:54:20.002Z",
-        "gitCommitSha": "7372a6cc161784b68ad0506ddcd80d708b524ff5"
+        "lastUpdated": "2026-05-22T07:56:56.049Z",
+        "gitCommitSha": "1b55376f8fb8f0695b912cb3386f29d58b3339a8"
       }
     ],
     "mafia-codereview@mafia-codereview-harness": [
