@@ -47,12 +47,17 @@ install_file_if_missing() {
   fi
 }
 
-# settings.json 전용: repo의 5개 필드(permissions/hooks/statusLine/enabledPlugins/extraKnownMarketplaces)만
-# 라이브에 머지. 라이브의 다른 키(effortLevel, channelsEnabled 등 머신별 개인 설정)는 보존.
+# settings.json 전용: dotfiles/sync-fields.json에 정의된 필드만 라이브에 머지.
+# 라이브의 다른 키(effortLevel, channelsEnabled 등 머신별 개인 설정)는 보존.
 merge_settings() {
   local src="$1"
   local dest="$2"
-  local fields='["permissions","hooks","statusLine","enabledPlugins","extraKnownMarketplaces"]'
+  local fields_file="$DOTFILES_DIR/sync-fields.json"
+
+  if [ ! -f "$fields_file" ]; then
+    echo "  [error] sync-fields.json not found: $fields_file" >&2
+    return 1
+  fi
 
   mkdir -p "$(dirname "$dest")"
 
@@ -62,11 +67,12 @@ merge_settings() {
     cp "$dest" "$backup"
   fi
 
-  python3 - "$src" "$dest" "$fields" <<'PY'
+  python3 - "$src" "$dest" "$fields_file" <<'PY'
 import json, sys, os
-src_path, dest_path, fields_json = sys.argv[1:]
-fields = json.loads(fields_json)
+src_path, dest_path, fields_path = sys.argv[1:]
 
+with open(fields_path) as f:
+    fields = json.load(f)
 with open(src_path) as f:
     src = json.load(f)
 if os.path.exists(dest_path):
@@ -83,7 +89,8 @@ with open(dest_path, "w") as f:
     json.dump(dest, f, indent=2, ensure_ascii=False)
     f.write("\n")
 PY
-  echo "  [merge] $dest (5 fields)"
+  local count=$(python3 -c "import json; print(len(json.load(open('$fields_file'))))")
+  echo "  [merge] $dest ($count fields from sync-fields.json)"
 }
 
 echo "[1/5] 설정 파일 설치..."

@@ -131,7 +131,7 @@ bash "$INSTALL_SH"
 
 install.sh가 설치하는 항목:
 - `CLAUDE.md` — 한국어 응답, 상태 알림 규칙 (전체 복사)
-- `settings.json` — **`permissions` / `hooks` / `statusLine` / `enabledPlugins` / `extraKnownMarketplaces` 5개 필드만 머지**. 라이브의 다른 키(`effortLevel`, `channelsEnabled`, `skipDangerousModePermissionPrompt`, `skipAutoPermissionPrompt` 등 머신별 개인 설정)는 보존됨. 기존 파일은 `.bak`으로 백업.
+- `settings.json` — **`dotfiles/sync-fields.json`에 나열된 필드만 머지** (현재 `permissions` / `hooks` / `statusLine` / `enabledPlugins` / `extraKnownMarketplaces` 5개). 라이브의 다른 키(`effortLevel`, `channelsEnabled`, `skipDangerousModePermissionPrompt`, `skipAutoPermissionPrompt` 등 머신별 개인 설정)는 보존됨. 기존 파일은 `.bak`으로 백업. 동기화 대상을 바꾸려면 `sync-fields.json` 한 곳만 수정.
 - `statusline-command.sh` — tmux 상태줄 스크립트 (전체 복사)
 - 훅 스크립트 — 위험 명령어 차단, 커밋 전 대화 저장 (전체 복사)
 - 플러그인 메타데이터 — installed_plugins.json, known_marketplaces.json (전체 복사)

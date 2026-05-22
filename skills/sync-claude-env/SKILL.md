@@ -25,7 +25,7 @@ version: 0.1.0
 - 민감 정보(봇 토큰, 유저 ID)는 절대 커밋하지 않는다.
 - `installed_plugins.json`의 경로는 `<HOME>` 플레이스홀더로 변환한다.
 - 채널 access.json은 빈 allowlist 템플릿만 repo에 저장한다.
-- **settings.json은 5개 핵심 필드만 동기화**한다: `permissions`, `hooks`, `statusLine`, `enabledPlugins`, `extraKnownMarketplaces`. 그 외 키(`effortLevel`, `channelsEnabled`, `skipDangerousModePermissionPrompt`, `skipAutoPermissionPrompt` 등)는 머신별 개인 선호로 간주하고 sync/apply 어느 방향에서도 건드리지 않는다.
+- **settings.json은 `dotfiles/sync-fields.json`에 나열된 필드만 동기화**한다 (현재 5개: `permissions`, `hooks`, `statusLine`, `enabledPlugins`, `extraKnownMarketplaces`). 그 외 키(`effortLevel`, `channelsEnabled`, `skipDangerousModePermissionPrompt`, `skipAutoPermissionPrompt` 등)는 머신별 개인 선호로 간주하고 sync/apply 어느 방향에서도 건드리지 않는다. 동기화 대상을 늘리거나 줄이려면 `dotfiles/sync-fields.json` 한 곳만 수정하면 양방향 모두 반영된다.
 
 ## Workflow
 
@@ -50,21 +50,22 @@ repo를 찾지 못하면 사용자에게 경로를 물어본다. 찾으면 `REPO
 | `~/.claude/hooks/scripts/block-dangerous.sh` | `$REPO_DIR/dotfiles/hooks/scripts/block-dangerous.sh` | 전체 diff |
 | `~/.claude/hooks/scripts/save-conv-before-commit.sh` | `$REPO_DIR/dotfiles/hooks/scripts/save-conv-before-commit.sh` | 전체 diff |
 
-settings.json은 5개 동기화 대상 필드만 떼어내서 비교한다 (그 외 키 차이는 의도된 머신별 차이이므로 노이즈로 본다):
+settings.json은 `dotfiles/sync-fields.json`에 나열된 필드만 떼어내서 비교한다 (그 외 키 차이는 의도된 머신별 차이이므로 노이즈로 본다):
 
 ```bash
-python3 - <<'PY' > /tmp/live_settings_subset.json
-import json
-fields = ["permissions","hooks","statusLine","enabledPlugins","extraKnownMarketplaces"]
-import os
+python3 - "$REPO_DIR" <<'PY' > /tmp/live_settings_subset.json
+import json, sys, os
+repo_dir = sys.argv[1]
+fields = json.load(open(f"{repo_dir}/dotfiles/sync-fields.json"))
 src = json.load(open(os.path.expanduser("~/.claude/settings.json")))
 print(json.dumps({k: src[k] for k in fields if k in src}, indent=2, ensure_ascii=False))
 PY
 
-python3 - <<'PY' > /tmp/repo_settings_subset.json
+python3 - "$REPO_DIR" <<'PY' > /tmp/repo_settings_subset.json
 import json, sys
-fields = ["permissions","hooks","statusLine","enabledPlugins","extraKnownMarketplaces"]
-src = json.load(open("$REPO_DIR/dotfiles/settings.json"))
+repo_dir = sys.argv[1]
+fields = json.load(open(f"{repo_dir}/dotfiles/sync-fields.json"))
+src = json.load(open(f"{repo_dir}/dotfiles/settings.json"))
 print(json.dumps({k: src[k] for k in fields if k in src}, indent=2, ensure_ascii=False))
 PY
 
@@ -125,15 +126,15 @@ ls "$REPO_DIR/dotfiles/meta/"*-access.json 2>/dev/null
 
 사용자가 확인하면, 변경된 파일들을 업데이트한다.
 
-**settings.json (5개 필드만 머지)**:
-라이브의 5개 동기화 대상 필드만 repo로 옮기고, repo의 다른 키는 절대 건드리지 않는다. install.sh의 `merge_settings`와 동일한 머지 로직을 sync 방향으로 적용.
+**settings.json (`sync-fields.json` 정의 필드만 머지)**:
+라이브의 동기화 대상 필드만 repo로 옮기고, repo의 다른 키는 절대 건드리지 않는다. install.sh의 `merge_settings`와 동일한 머지 로직을 sync 방향으로 적용. 동기화 대상 정의는 `dotfiles/sync-fields.json` 한 곳에서 관리.
 
 ```bash
-python3 - "$HOME/.claude/settings.json" "$REPO_DIR/dotfiles/settings.json" <<'PY'
+python3 - "$HOME/.claude/settings.json" "$REPO_DIR/dotfiles/settings.json" "$REPO_DIR/dotfiles/sync-fields.json" <<'PY'
 import json, sys, os
-src_path, dest_path = sys.argv[1:]
-fields = ["permissions","hooks","statusLine","enabledPlugins","extraKnownMarketplaces"]
+src_path, dest_path, fields_path = sys.argv[1:]
 
+fields = json.load(open(fields_path))
 src = json.load(open(src_path))
 dest = json.load(open(dest_path)) if os.path.exists(dest_path) else {}
 
