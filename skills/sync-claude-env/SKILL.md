@@ -25,6 +25,7 @@ version: 0.1.0
 - 민감 정보(봇 토큰, 유저 ID)는 절대 커밋하지 않는다.
 - `installed_plugins.json`의 경로는 `<HOME>` 플레이스홀더로 변환한다.
 - 채널 access.json은 빈 allowlist 템플릿만 repo에 저장한다.
+- **settings.json은 5개 핵심 필드만 동기화**한다: `permissions`, `hooks`, `statusLine`, `enabledPlugins`, `extraKnownMarketplaces`. 그 외 키(`effortLevel`, `channelsEnabled`, `skipDangerousModePermissionPrompt`, `skipAutoPermissionPrompt` 등)는 머신별 개인 선호로 간주하고 sync/apply 어느 방향에서도 건드리지 않는다.
 
 ## Workflow
 
@@ -39,18 +40,40 @@ repo를 찾지 못하면 사용자에게 경로를 물어본다. 찾으면 `REPO
 
 ### Step 2: 파일별 비교
 
-아래 파일들을 라이브 환경과 repo 사이에서 `diff`로 비교한다:
+아래 파일들을 라이브 환경과 repo 사이에서 비교한다:
 
-| 라이브 경로 | repo 경로 |
-|------------|-----------|
-| `~/.claude/settings.json` | `$REPO_DIR/dotfiles/settings.json` |
-| `~/.claude/CLAUDE.md` | `$REPO_DIR/dotfiles/CLAUDE.md` |
-| `~/.claude/statusline-command.sh` | `$REPO_DIR/dotfiles/statusline-command.sh` |
-| `~/.claude/hooks/scripts/block-dangerous.sh` | `$REPO_DIR/dotfiles/hooks/scripts/block-dangerous.sh` |
-| `~/.claude/hooks/scripts/save-conv-before-commit.sh` | `$REPO_DIR/dotfiles/hooks/scripts/save-conv-before-commit.sh` |
+| 라이브 경로 | repo 경로 | 비교 방식 |
+|------------|-----------|---------|
+| `~/.claude/settings.json` | `$REPO_DIR/dotfiles/settings.json` | **5개 필드만** 추출 후 diff |
+| `~/.claude/CLAUDE.md` | `$REPO_DIR/dotfiles/CLAUDE.md` | 전체 diff |
+| `~/.claude/statusline-command.sh` | `$REPO_DIR/dotfiles/statusline-command.sh` | 전체 diff |
+| `~/.claude/hooks/scripts/block-dangerous.sh` | `$REPO_DIR/dotfiles/hooks/scripts/block-dangerous.sh` | 전체 diff |
+| `~/.claude/hooks/scripts/save-conv-before-commit.sh` | `$REPO_DIR/dotfiles/hooks/scripts/save-conv-before-commit.sh` | 전체 diff |
+
+settings.json은 5개 동기화 대상 필드만 떼어내서 비교한다 (그 외 키 차이는 의도된 머신별 차이이므로 노이즈로 본다):
 
 ```bash
-diff ~/.claude/settings.json "$REPO_DIR/dotfiles/settings.json"
+python3 - <<'PY' > /tmp/live_settings_subset.json
+import json
+fields = ["permissions","hooks","statusLine","enabledPlugins","extraKnownMarketplaces"]
+import os
+src = json.load(open(os.path.expanduser("~/.claude/settings.json")))
+print(json.dumps({k: src[k] for k in fields if k in src}, indent=2, ensure_ascii=False))
+PY
+
+python3 - <<'PY' > /tmp/repo_settings_subset.json
+import json, sys
+fields = ["permissions","hooks","statusLine","enabledPlugins","extraKnownMarketplaces"]
+src = json.load(open("$REPO_DIR/dotfiles/settings.json"))
+print(json.dumps({k: src[k] for k in fields if k in src}, indent=2, ensure_ascii=False))
+PY
+
+diff /tmp/live_settings_subset.json /tmp/repo_settings_subset.json
+```
+
+나머지 파일은 전체 diff:
+
+```bash
 diff ~/.claude/CLAUDE.md "$REPO_DIR/dotfiles/CLAUDE.md"
 # ... 각 파일에 대해 반복
 ```
@@ -102,7 +125,29 @@ ls "$REPO_DIR/dotfiles/meta/"*-access.json 2>/dev/null
 
 사용자가 확인하면, 변경된 파일들을 업데이트한다.
 
-**일반 설정 파일** (settings.json, CLAUDE.md, statusline-command.sh, hook scripts):
+**settings.json (5개 필드만 머지)**:
+라이브의 5개 동기화 대상 필드만 repo로 옮기고, repo의 다른 키는 절대 건드리지 않는다. install.sh의 `merge_settings`와 동일한 머지 로직을 sync 방향으로 적용.
+
+```bash
+python3 - "$HOME/.claude/settings.json" "$REPO_DIR/dotfiles/settings.json" <<'PY'
+import json, sys, os
+src_path, dest_path = sys.argv[1:]
+fields = ["permissions","hooks","statusLine","enabledPlugins","extraKnownMarketplaces"]
+
+src = json.load(open(src_path))
+dest = json.load(open(dest_path)) if os.path.exists(dest_path) else {}
+
+for key in fields:
+    if key in src:
+        dest[key] = src[key]
+
+with open(dest_path, "w") as f:
+    json.dump(dest, f, indent=2, ensure_ascii=False)
+    f.write("\n")
+PY
+```
+
+**일반 설정 파일** (CLAUDE.md, statusline-command.sh, hook scripts):
 - 라이브 파일을 그대로 repo에 복사한다.
 
 **플러그인 메타데이터** (installed_plugins.json, known_marketplaces.json):

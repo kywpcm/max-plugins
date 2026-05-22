@@ -47,9 +47,48 @@ install_file_if_missing() {
   fi
 }
 
+# settings.json 전용: repo의 5개 필드(permissions/hooks/statusLine/enabledPlugins/extraKnownMarketplaces)만
+# 라이브에 머지. 라이브의 다른 키(effortLevel, channelsEnabled 등 머신별 개인 설정)는 보존.
+merge_settings() {
+  local src="$1"
+  local dest="$2"
+  local fields='["permissions","hooks","statusLine","enabledPlugins","extraKnownMarketplaces"]'
+
+  mkdir -p "$(dirname "$dest")"
+
+  if [ -f "$dest" ]; then
+    local backup="${dest}.bak"
+    echo "  [backup] $dest → $backup"
+    cp "$dest" "$backup"
+  fi
+
+  python3 - "$src" "$dest" "$fields" <<'PY'
+import json, sys, os
+src_path, dest_path, fields_json = sys.argv[1:]
+fields = json.loads(fields_json)
+
+with open(src_path) as f:
+    src = json.load(f)
+if os.path.exists(dest_path):
+    with open(dest_path) as f:
+        dest = json.load(f)
+else:
+    dest = {}
+
+for key in fields:
+    if key in src:
+        dest[key] = src[key]
+
+with open(dest_path, "w") as f:
+    json.dump(dest, f, indent=2, ensure_ascii=False)
+    f.write("\n")
+PY
+  echo "  [merge] $dest (5 fields)"
+}
+
 echo "[1/5] 설정 파일 설치..."
 install_file "$DOTFILES_DIR/CLAUDE.md" "$CLAUDE_DIR/CLAUDE.md"
-install_file "$DOTFILES_DIR/settings.json" "$CLAUDE_DIR/settings.json"
+merge_settings "$DOTFILES_DIR/settings.json" "$CLAUDE_DIR/settings.json"
 install_file "$DOTFILES_DIR/statusline-command.sh" "$CLAUDE_DIR/statusline-command.sh"
 
 echo ""

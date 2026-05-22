@@ -97,9 +97,5 @@
         "repo": "vibemafiaclub/mafia-codereview-harness"
       }
     }
-  },
-  "effortLevel": "xhigh",
-  "channelsEnabled": true,
-  "skipDangerousModePermissionPrompt": true,
-  "skipAutoPermissionPrompt": true
+  }
 }
