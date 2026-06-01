@@ -134,27 +134,32 @@ install.sh가 설치하는 항목:
 - `settings.json` — **`dotfiles/sync-fields.json`에 나열된 필드만 머지** (현재 `permissions` / `hooks` / `statusLine` / `enabledPlugins` / `extraKnownMarketplaces` 5개). 라이브의 다른 키(`effortLevel`, `channelsEnabled`, `skipDangerousModePermissionPrompt`, `skipAutoPermissionPrompt` 등 머신별 개인 설정)는 보존됨. 기존 파일은 `.bak`으로 백업. 동기화 대상을 바꾸려면 `sync-fields.json` 한 곳만 수정.
 - `statusline-command.sh` — tmux 상태줄 스크립트 (전체 복사)
 - 훅 스크립트 — 위험 명령어 차단, 커밋 전 대화 저장 (전체 복사)
-- 플러그인 메타데이터 — installed_plugins.json, known_marketplaces.json (전체 복사)
-- 채널 접근 설정 — Discord access.json (기존 파일이 없을 때만)
+- 플러그인 메타데이터 — installed_plugins.json (제외 플러그인은 라이브 보존 머지), known_marketplaces.json (전체 복사)
+
+**제외 대상 (`dotfiles/sync-exclude.json`):** 이 파일의 `plugins`/`channels`에 나열된 항목(현재 `discord@claude-plugins-official` 플러그인, `discord` 채널)은 sync/apply 어느 방향에서도 건드리지 않는다. discord는 각 머신에서 따로 설치·설정한다. `enabledPlugins`와 `installed_plugins.json`을 머지할 때 제외 플러그인의 **라이브 머신 상태는 그대로 보존**되며 repo가 추가/제거하지 않는다. 제외 대상을 바꾸려면 `sync-exclude.json` 한 곳만 수정한다.
 
 ### Step 7: 수동 설정 안내
 
 install.sh 완료 후 사용자에게 수동 설정이 필요한 항목을 안내한다.
 
-**채널 설정 (사용하는 채널만):**
-
-Discord:
-```bash
-# 1. 봇 토큰 설정
-echo "DISCORD_BOT_TOKEN=여기에_봇_토큰" > ~/.claude/channels/discord/.env
-
-# 2. 유저 ID 설정 — access.json의 allowFrom에 본인 Discord 유저 ID 추가
-# 예: "allowFrom": ["123456789012345678"]
-```
-
 **플러그인 설정:**
 ```
 settings.json의 enabledPlugins에서 실제 사용하지 않는 플러그인은 false로 변경하거나 제거할 수 있습니다.
+```
+
+**제외 플러그인/채널 (각 머신에서 직접 관리):**
+
+`dotfiles/sync-exclude.json`에 명시된 항목(현재 discord)은 repo가 관리하지 않으므로, 이 머신에서 discord를 쓰려면 직접 설치·설정한다. (apply는 이미 설치된 discord를 보존만 하고 새로 깔지 않는다.)
+```bash
+# 이 머신에서 discord를 사용할 경우에만:
+# 1. 플러그인 설치
+claude plugin install discord@claude-plugins-official
+
+# 2. 봇 토큰 설정
+echo "DISCORD_BOT_TOKEN=여기에_봇_토큰" > ~/.claude/channels/discord/.env
+
+# 3. 유저 ID 설정 — access.json의 allowFrom에 본인 Discord 유저 ID 추가
+# 예: "allowFrom": ["123456789012345678"]
 ```
 
 ### Step 8: 설치 검증
@@ -177,12 +182,9 @@ settings.json의 enabledPlugins에서 실제 사용하지 않는 플러그인은
 
 # 플러그인 메타데이터 확인
 [ -f ~/.claude/plugins/installed_plugins.json ] && echo "✅ installed_plugins.json" || echo "❌ installed_plugins.json"
-
-# 채널 설정 확인
-for ch in discord; do
-  [ -f ~/.claude/channels/$ch/access.json ] && echo "✅ $ch access.json" || echo "⚠️ $ch access.json (미설정)"
-done
 ```
+
+> 제외 대상(discord 등)은 install.sh가 검증하지 않는다. 머신별 관리 항목이므로 의도된 동작이다.
 
 ### Step 9: 완료 보고
 
@@ -191,8 +193,8 @@ done
 ```
 환경 적용이 완료되었습니다.
 
-⚠️ 수동 설정 필요:
-  - Discord: ~/.claude/channels/discord/.env 에 봇 토큰 추가
+ℹ️ 제외 대상(sync-exclude.json): discord 등은 repo가 관리하지 않습니다.
+   이 머신에서 discord를 쓰려면 직접 설치/설정하세요 (Step 7 참고).
 
 환경을 변경한 후 repo에 반영하려면: /sync-env
 ```

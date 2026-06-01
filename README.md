@@ -48,9 +48,21 @@ cd ~/.claude/plugins/cache/max-plugins/dotfiles-claude-code/1.0.0
 
 ### 3. 수동 설정
 
-- `~/.claude/channels/discord/.env` — `DISCORD_BOT_TOKEN=...` 추가
-- `~/.claude/channels/discord/access.json` — `allowFrom`에 본인 Discord 유저 ID 추가
 - `~/.claude/settings.json` — `enabledPlugins`를 실제 설치된 플러그인에 맞게 조정
+
+### 머신별 관리 항목 (sync-exclude.json)
+
+`dotfiles/sync-exclude.json`에 명시된 플러그인/채널은 sync/apply 어느 방향에서도 건드리지 않으며, **각 머신에서 따로 설치·설정**한다. 현재 대상: `discord@claude-plugins-official` 플러그인, `discord` 채널.
+
+이 머신에서 Discord를 사용하려면 직접 설정한다:
+
+```bash
+claude plugin install discord@claude-plugins-official
+echo "DISCORD_BOT_TOKEN=..." > ~/.claude/channels/discord/.env
+# ~/.claude/channels/discord/access.json 의 allowFrom 에 본인 Discord 유저 ID 추가
+```
+
+제외 대상을 바꾸려면 `sync-exclude.json` 한 곳만 수정하면 sync/apply 양방향에 반영된다.
 
 ## 업데이트
 

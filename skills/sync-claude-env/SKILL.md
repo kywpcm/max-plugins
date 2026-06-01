@@ -26,6 +26,7 @@ version: 0.1.0
 - `installed_plugins.json`의 경로는 `<HOME>` 플레이스홀더로 변환한다.
 - 채널 access.json은 빈 allowlist 템플릿만 repo에 저장한다.
 - **settings.json은 `dotfiles/sync-fields.json`에 나열된 필드만 동기화**한다 (현재 5개: `permissions`, `hooks`, `statusLine`, `enabledPlugins`, `extraKnownMarketplaces`). 그 외 키(`effortLevel`, `channelsEnabled`, `skipDangerousModePermissionPrompt`, `skipAutoPermissionPrompt` 등)는 머신별 개인 선호로 간주하고 sync/apply 어느 방향에서도 건드리지 않는다. 동기화 대상을 늘리거나 줄이려면 `dotfiles/sync-fields.json` 한 곳만 수정하면 양방향 모두 반영된다.
+- **`dotfiles/sync-exclude.json`에 나열된 플러그인/채널은 sync/apply 양방향에서 제외**한다 (현재 `discord@claude-plugins-official` 플러그인, `discord` 채널). 제외 플러그인은 repo의 `enabledPlugins`/`installed_plugins.json`에 **절대 기록하지 않고**, 제외 채널은 "새 채널 감지"에서 건너뛴다. discord 같은 항목은 각 머신에서 따로 관리된다. 제외 대상을 바꾸려면 `dotfiles/sync-exclude.json` 한 곳만 수정하면 양방향 모두 반영된다.
 
 ## Workflow
 
@@ -50,15 +51,19 @@ repo를 찾지 못하면 사용자에게 경로를 물어본다. 찾으면 `REPO
 | `~/.claude/hooks/scripts/block-dangerous.sh` | `$REPO_DIR/dotfiles/hooks/scripts/block-dangerous.sh` | 전체 diff |
 | `~/.claude/hooks/scripts/save-conv-before-commit.sh` | `$REPO_DIR/dotfiles/hooks/scripts/save-conv-before-commit.sh` | 전체 diff |
 
-settings.json은 `dotfiles/sync-fields.json`에 나열된 필드만 떼어내서 비교한다 (그 외 키 차이는 의도된 머신별 차이이므로 노이즈로 본다):
+settings.json은 `dotfiles/sync-fields.json`에 나열된 필드만 떼어내서 비교한다 (그 외 키 차이는 의도된 머신별 차이이므로 노이즈로 본다). 라이브 추출 시 `sync-exclude.json`의 제외 플러그인은 `enabledPlugins`에서 걸러내, repo가 discord 같은 항목을 절대 흡수하지 않도록 한다:
 
 ```bash
 python3 - "$REPO_DIR" <<'PY' > /tmp/live_settings_subset.json
 import json, sys, os
 repo_dir = sys.argv[1]
 fields = json.load(open(f"{repo_dir}/dotfiles/sync-fields.json"))
+excluded = set(json.load(open(f"{repo_dir}/dotfiles/sync-exclude.json")).get("plugins", []))
 src = json.load(open(os.path.expanduser("~/.claude/settings.json")))
-print(json.dumps({k: src[k] for k in fields if k in src}, indent=2, ensure_ascii=False))
+subset = {k: src[k] for k in fields if k in src}
+if "enabledPlugins" in subset:
+    subset["enabledPlugins"] = {k: v for k, v in subset["enabledPlugins"].items() if k not in excluded}
+print(json.dumps(subset, indent=2, ensure_ascii=False))
 PY
 
 python3 - "$REPO_DIR" <<'PY' > /tmp/repo_settings_subset.json
@@ -84,11 +89,20 @@ diff ~/.claude/CLAUDE.md "$REPO_DIR/dotfiles/CLAUDE.md"
 메타데이터 파일은 경로에 실제 HOME 경로가 들어 있으므로, 비교 전에 `<HOME>` 플레이스홀더로 변환해서 비교해야 한다.
 
 ```bash
-# 라이브 installed_plugins.json에서 HOME 경로를 <HOME>으로 치환 후 비교
-sed "s|$HOME|<HOME>|g" ~/.claude/plugins/installed_plugins.json > /tmp/live_installed_plugins.json
+# 라이브 installed_plugins.json: HOME 경로를 <HOME>으로 치환하고,
+# sync-exclude.json의 제외 플러그인(discord 등)을 걸러낸 뒤 비교
+sed "s|$HOME|<HOME>|g" ~/.claude/plugins/installed_plugins.json > /tmp/live_installed_plugins_raw.json
+python3 - "$REPO_DIR" <<'PY' > /tmp/live_installed_plugins.json
+import json, sys
+repo_dir = sys.argv[1]
+excluded = set(json.load(open(f"{repo_dir}/dotfiles/sync-exclude.json")).get("plugins", []))
+data = json.load(open("/tmp/live_installed_plugins_raw.json"))
+data["plugins"] = {k: v for k, v in data.get("plugins", {}).items() if k not in excluded}
+print(json.dumps(data, indent=2, ensure_ascii=False))
+PY
 diff /tmp/live_installed_plugins.json "$REPO_DIR/dotfiles/meta/installed_plugins.json"
 
-# known_marketplaces.json도 동일하게
+# known_marketplaces.json도 동일하게 (마켓플레이스는 제외 대상 아님)
 sed "s|$HOME|<HOME>|g" ~/.claude/plugins/known_marketplaces.json > /tmp/live_known_marketplaces.json
 diff /tmp/live_known_marketplaces.json "$REPO_DIR/dotfiles/meta/known_marketplaces.json"
 ```
@@ -103,10 +117,14 @@ ls ~/.claude/channels/ 2>/dev/null
 
 # repo 채널 템플릿 목록 (파일명에서 추출)
 ls "$REPO_DIR/dotfiles/meta/"*-access.json 2>/dev/null
+
+# sync-exclude.json의 제외 채널 목록 (감지에서 건너뛸 대상)
+python3 -c "import json; print(' '.join(json.load(open('$REPO_DIR/dotfiles/sync-exclude.json')).get('channels', [])))"
 ```
 
 **새 채널 감지 규칙:**
 - 라이브에 `~/.claude/channels/{channel}/access.json`이 있지만 repo에 `dotfiles/meta/{channel}-access.json`이 없으면 → 새 채널
+- **단, `sync-exclude.json`의 `channels`에 있는 채널(현재 `discord`)은 제외** — 각 머신에서 따로 관리되므로 "새 채널"로 잡지 않고, repo에 템플릿을 만들지도, install.sh에 스텝을 추가하지도 않는다.
 
 ### Step 5: 차이점 요약 및 사용자 확인
 
@@ -126,20 +144,25 @@ ls "$REPO_DIR/dotfiles/meta/"*-access.json 2>/dev/null
 
 사용자가 확인하면, 변경된 파일들을 업데이트한다.
 
-**settings.json (`sync-fields.json` 정의 필드만 머지)**:
-라이브의 동기화 대상 필드만 repo로 옮기고, repo의 다른 키는 절대 건드리지 않는다. install.sh의 `merge_settings`와 동일한 머지 로직을 sync 방향으로 적용. 동기화 대상 정의는 `dotfiles/sync-fields.json` 한 곳에서 관리.
+**settings.json (`sync-fields.json` 정의 필드만 머지, 제외 플러그인은 드롭)**:
+라이브의 동기화 대상 필드만 repo로 옮기고, repo의 다른 키는 절대 건드리지 않는다. `enabledPlugins`는 `sync-exclude.json`의 제외 플러그인을 빼고 기록해, repo가 discord 같은 항목을 절대 담지 않게 한다. install.sh의 `merge_settings`와 동일한 머지 로직을 sync 방향으로 적용.
 
 ```bash
-python3 - "$HOME/.claude/settings.json" "$REPO_DIR/dotfiles/settings.json" "$REPO_DIR/dotfiles/sync-fields.json" <<'PY'
+python3 - "$HOME/.claude/settings.json" "$REPO_DIR/dotfiles/settings.json" "$REPO_DIR/dotfiles/sync-fields.json" "$REPO_DIR/dotfiles/sync-exclude.json" <<'PY'
 import json, sys, os
-src_path, dest_path, fields_path = sys.argv[1:]
+src_path, dest_path, fields_path, exclude_path = sys.argv[1:]
 
 fields = json.load(open(fields_path))
+excluded = set(json.load(open(exclude_path)).get("plugins", []))
 src = json.load(open(src_path))
 dest = json.load(open(dest_path)) if os.path.exists(dest_path) else {}
 
 for key in fields:
-    if key in src:
+    if key not in src:
+        continue
+    if key == "enabledPlugins":
+        dest["enabledPlugins"] = {k: v for k, v in src["enabledPlugins"].items() if k not in excluded}
+    else:
         dest[key] = src[key]
 
 with open(dest_path, "w") as f:
@@ -152,13 +175,26 @@ PY
 - 라이브 파일을 그대로 repo에 복사한다.
 
 **플러그인 메타데이터** (installed_plugins.json, known_marketplaces.json):
-- 라이브 파일에서 `$HOME` 경로를 `<HOME>`으로 치환하여 저장한다.
+- `$HOME` 경로를 `<HOME>`으로 치환하여 저장하되, `installed_plugins.json`은 제외 플러그인(discord 등) 엔트리를 빼고 저장한다.
 ```bash
-sed "s|$HOME|<HOME>|g" ~/.claude/plugins/installed_plugins.json > "$REPO_DIR/dotfiles/meta/installed_plugins.json"
+# installed_plugins.json: 치환 + 제외 플러그인 드롭
+python3 - "$REPO_DIR" <<PY > "$REPO_DIR/dotfiles/meta/installed_plugins.json"
+import json, os, sys
+repo_dir = sys.argv[1]
+excluded = set(json.load(open(f"{repo_dir}/dotfiles/sync-exclude.json")).get("plugins", []))
+raw = open(os.path.expanduser("~/.claude/plugins/installed_plugins.json")).read().replace(os.path.expanduser("~"), "<HOME>")
+data = json.loads(raw)
+data["plugins"] = {k: v for k, v in data.get("plugins", {}).items() if k not in excluded}
+print(json.dumps(data, indent=2, ensure_ascii=False))
+PY
+
+# known_marketplaces.json: 치환만 (마켓플레이스는 제외 대상 아님)
 sed "s|$HOME|<HOME>|g" ~/.claude/plugins/known_marketplaces.json > "$REPO_DIR/dotfiles/meta/known_marketplaces.json"
 ```
 
 ### Step 7: 새 채널 처리
+
+> `sync-exclude.json`의 `channels`에 있는 채널(현재 `discord`)은 Step 4에서 이미 걸러졌으므로 여기 도달하지 않는다. 아래는 그 외 새 채널에만 적용한다.
 
 새 채널이 감지되었으면:
 

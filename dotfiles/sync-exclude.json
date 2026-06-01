@@ -1,0 +1,8 @@
+{
+  "plugins": [
+    "discord@claude-plugins-official"
+  ],
+  "channels": [
+    "discord"
+  ]
+}
