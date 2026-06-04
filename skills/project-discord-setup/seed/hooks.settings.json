@@ -1,0 +1,36 @@
+{
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "matcher": "",
+        "hooks": [
+          { "type": "command", "command": "bash ~/.claude/hooks/scripts/voice-notify-ack.sh" }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "matcher": "",
+        "hooks": [
+          { "type": "command", "command": "bash ~/.claude/hooks/scripts/voice-notify-approval.sh" }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "",
+        "hooks": [
+          { "type": "command", "command": "bash ~/.claude/hooks/scripts/voice-notify-progress.sh" }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          { "type": "command", "command": "rm -f \"/tmp/voice_bridge_progress_$(id -u)\"" }
+        ]
+      }
+    ]
+  }
+}

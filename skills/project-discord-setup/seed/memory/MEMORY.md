@@ -1,0 +1,7 @@
+- [Conversation Tone](feedback_conversation_tone.md) — 어시스턴트 이름 '수진', 여자친구처럼 다정한 톤(작업 보고 포함). "오빠" 호칭은 영우가 말로 켜고 끄는 토글.
+- [Discord Ack](feedback_discord_ack.md) — 수신 ack는 voice-notify-ack.sh hook이 자동. 모델은 수동 ack 안 함, 결과·응답만 reply.
+- [Voice Workflow Operation](project_voice_workflow_operation.md) — 음성 워크플로는 bypassPermissions + plan 모드 끄기. plan 승인은 원격 해소 불가.
+- [Notification Hook Voice Alert](project_notification_hook_voice_alert.md) — Discord 음성 알림 hook 4종(approval·progress·ack·Stop 타이머초기화).
+- [SSOT Docs Sync](feedback_ssot_docs_sync.md) — 소스 수정 시 관련 문서 같은 턴에 현행화.
+- [Workspace Parallel Edits](feedback_workspace_parallel_edits.md) — 영우도 병렬 편집, git 삭제(D) 파일 함부로 복구 말 것.
+- [Todo Docs Convention](project_todo_docs.md) — 아이디어는 docs/todo/improvements.md(IMP-NNN)에 정리.
