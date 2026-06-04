@@ -11,7 +11,7 @@ description: >
   access 정책 변경 자체가 목적이면 쓰지 않는다(그건 discord:configure / discord:access).
 user-invocable: true
 argument-hint: "[dm | voice]"
-version: 0.1.0
+version: 0.2.0
 ---
 
 # project-discord-setup
@@ -121,6 +121,21 @@ DM 전용이면 여기서 끝. 음성이면 3으로.
 - 서버 멤버 목록에서 봇 #1 우클릭 → "ID 복사"
 → **봇 #1 토큰, 봇 #1 user ID, 봇 #2 user ID**(서버에서 봇 #2 우클릭 → ID 복사) 수집. **API 키(Soniox/Hume/OpenAI)는 위 '공유 API 키' 출처에서 자동 주입** — 최초 구성 때만 1회 입력한다. `USER_ID`(선택, 입퇴장 자동 토글)만 필요 시 받는다.
 
+**[수동 3] 두 채널 권한에 봇 #1 추가 — ⚠️ 빠지면 음성이 *조용히* 깨진다(실전 검증된 필수 단계):**
+OAuth 초대는 **길드(서버) 단위** 권한만 준다. 채널이 비공개거나 **카테고리에 권한 오버라이드**가 걸려 있으면 봇은 그 채널에 **접근조차 못 한다**(`403 Missing Access`). 각 채널 **설정(⚙️) → 권한 → 역할/멤버 추가**로 봇 #1을 넣고 켠다:
+- 📝 **텍스트 채널**: `채널 보기`(View Channel)·`메시지 보내기`(Send Messages)·`메시지 기록 보기`(Read Message History) — 봇 #1이 받아쓰기를 올리고 `!join`/`!leave`를 읽으려면 필요.
+- 🔊 **음성 채널**: `채널 보기`(View Channel)·`연결`(Connect)·`말하기`(Speak) — 없으면 음성 연결이 `signalling`에서 멈춰 **`ready` 도달 실패** → **봇이 음성 채널 UI에 안 보이고** 음성·STT 전부 불가(게이트웨이 `VoiceStateUpdate`는 길드 단위라 "Auto-joined" 로그는 찍혀서 정상으로 *착각하기 쉽다*).
+- (봇 #2도 텍스트 채널을 못 읽으면 중계가 끊기니, 텍스트 채널 권한에 **봇 #2도 함께** 추가해 두면 안전하다.)
+
+**[자동] 채널 접근 검증** — 빌드 전에 [수동 3] 누락을 잡는다(봇 #1 토큰으로 REST 도달 확인):
+```bash
+for CH in "<VOICE_CHANNEL_ID>" "<TEXT_CHANNEL_ID>"; do
+  echo -n "$CH → "; curl -s -o /dev/null -w "%{http_code}\n" \
+    -H "Authorization: Bot <봇#1 토큰>" "https://discord.com/api/v10/channels/$CH"
+done
+```
+`200`이면 접근 OK, `403`(Missing Access)이면 그 채널 권한이 빠진 것 → 사용자에게 [수동 3] 권한 추가를 요청하고 **`200`이 나올 때까지** 재확인한다. 음성 채널은 도달(200)만으로 부족하고 `Connect`/`Speak`까지 켜져야 하므로, 의심되면 `GET /channels/<id>`의 `permission_overwrites` + 봇 role 권한을 계산해 `CONNECT`(`1<<20`)·`SPEAK`(`1<<21`) 비트를 확인한다.
+
 **[확인] 자동 생성 전, 수집한 ID를 마스킹해 매핑을 되읽어 확인받는다** (잘못 매핑하면 파일은 정상 생성돼도 음성이 *조용히* 깨진다):
 - 봇 #1(voice-bridge, STT/TTS) user ID → `DISCORD_ALLOW_BOT_IDS` (봇 #2 채널 `.env`)
 - 봇 #1 토큰 → voice-bridge env `DISCORD_BOT_TOKEN`
@@ -191,6 +206,8 @@ DM 전용이면 여기서 끝. 음성이면 3으로.
 
 **음성**: `pm2 logs voice-bridge-<PROJ>`에서 봇 #1 로그인·`REQUIRED_ENV` 미스 없음 확인 → 음성 채널 입장(환영 음성) → 말하기 → 텍스트 채널에 `🎤 [음성]…` 도착 → 봇 #2가 응답 작성 → TTS 음성 재생되면 **전체 루프 성공**. 봇 #2가 응답 안 하면(가장 흔함): 봇 #2가 `clauded --channels …`로 떠 있나? / server.ts 패치 / `DISCORD_ALLOW_BOT_IDS`에 봇 #1 ID 정확? / `group add` 적용? / `/reload-plugins` 했나?
 
+**봇 #1이 음성 채널 UI에 안 보이거나 음성·STT가 안 되면** → [수동 3] 채널 권한 문제다. 로그가 `[Voice] state: signalling -> destroyed`만 반복하고 `ready`에 못 가면 강한 신호. 봇 #1 토큰으로 `GET /channels/<VOICE_CHANNEL_ID>`가 `403`이면 접근 자체가 없는 것 → 음성 채널 권한에 봇 #1(View/Connect/Speak)을 추가하면 즉시 해결된다(봇 재시작 불필요, 다음 입장부터 적용).
+
 ## 흔한 실수
 - **4개 ID 혼동**: 봇 #1/#2 토큰·user ID를 섞어 넣음 → 위 표로 매번 대조.
 - **봇 #2 토큰을 글로벌에 저장**: `/discord:configure`는 `~/.claude/...`(글로벌)에 쓴다. 이 스킬은 **프로젝트 경로**에 직접 써야 하므로 `/discord:configure`에 의존하지 않는다.
@@ -198,5 +215,6 @@ DM 전용이면 여기서 끝. 음성이면 3으로.
 - **reload 누락**: 토큰/`DISCORD_ALLOW_BOT_IDS`를 바꾼 뒤 `/reload-plugins` 안 하면 옛 설정으로 동작.
 - **봇 #2 미실행**: 봇 #2는 대상 프로젝트에서 `clauded --channels plugin:discord@claude-plugins-official`로 떠 있어야 DM·채널에 응답한다. 안 띄우면 메시지를 보내도 무응답이라 토큰 문제로 오인하기 쉽다.
 - **direnv 미반영**: `.envrc`를 만든 직후 같은 셸엔 `DISCORD_STATE_DIR`이 아직 안 떠 있을 수 있다. `clauded` 띄우기 전 디렉토리를 나갔다 재진입(`cd .. && cd -`)해 `export +DISCORD_STATE_DIR`을 확인할 것. 안 하면 글로벌 STATE_DIR을 읽어 프로젝트 봇 토큰을 못 찾아 봇 #2가 무응답이 된다.
+- **봇 #1 채널 권한 누락(음성 무음 실패의 1순위)**: OAuth 초대는 **길드 권한만** 준다. 채널이 비공개/카테고리 오버라이드면 봇 #1이 채널에 접근 못 해(`403 Missing Access`) 음성 연결이 `signalling→destroyed`만 반복하고 `ready`에 못 가 **UI에 안 보인다**. 게이트웨이 "Auto-joined" 로그는 길드 이벤트라 찍히므로 정상으로 오인하기 쉽다. → [수동 3]에서 두 채널 권한에 봇 #1을 직접 추가(음성: View/Connect/Speak, 텍스트: View/Send/Read History)하고, 봇 #1 토큰으로 `GET /channels/<id>`가 `200`인지 검증.
 - **새 서버 생성**: 음성은 기존 서버에 채널만 추가. 봇이 프로젝트마다 다르므로 한 서버로 충분.
 - **API 키 하드코딩 금지**: `SONIOX/HUME/OPENAI` 키는 **public 플러그인 repo·스킬·seed에 절대 넣지 않는다**(유출). 프로젝트 불변 공유 키라, 로컬 출처(`~/.config/voice-bridge/shared-keys.env` 또는 기존 voice-bridge env)에서만 주입한다.
