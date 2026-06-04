@@ -11,7 +11,7 @@ description: >
   access 정책 변경 자체가 목적이면 쓰지 않는다(그건 discord:configure / discord:access).
 user-invocable: true
 argument-hint: "[dm | voice]"
-version: 0.2.0
+version: 0.3.0
 ---
 
 # project-discord-setup
@@ -186,7 +186,26 @@ done
 
 **① 훅** — `seed/hooks.settings.json`의 `hooks`를 프로젝트 `.claude/settings.json`에 **병합**(기존 settings 있으면 hook type별로 추가, 없으면 새로 생성). 4종: ack(`UserPromptSubmit`)·approval(`Notification`)·progress(`PostToolUse`)·Stop(타이머 초기화).
 - **전제 검증**: 스크립트가 `~/.claude/hooks/scripts/voice-notify-{ack,approval,progress}.sh`에 있어야 동작한다. `ls`로 확인하고, 없으면 *"글로벌 hooks 미설치 — apply-claude-env로 환경 동기화 필요"*라고 안내한다(스크립트 자체는 글로벌 환경 자산이라 이 스킬이 아닌 환경 동기화가 배포한다).
-- hook이 음성 알림을 보내려면 그 프로젝트에 봇 #2 토큰(`.claude/channels/discord/.env`)과 `TEXT_CHANNEL_ID`가 있어야 한다(음성 구성이면 이미 충족).
+- hook이 알림을 보내려면 봇 #2 토큰(`.claude/channels/discord/.env`)과 **프로젝트 루트 `.env`의 `TEXT_CHANNEL_ID`·`USER_ID`**가 필요하다. 토큰은 DM 경로에서 만들지만 **루트 `.env`는 아래 ①-b에서 새로 만들어야 한다**(안 만들면 ack·progress가 조용히 no-op).
+
+**①-b 프로젝트 루트 `.env` (hook 입력값) — 훅과 반드시 세트로 생성:**
+음성 알림 hook(`voice-notify-*.sh`)은 `$PROJECT_DIR/.env`에서 아래 값을 읽는다(봇 토큰은 `.claude/channels/discord/.env`에서 읽으므로 여기엔 안 넣는다 — 비밀값 없음). 프로젝트 루트에 `.env` 생성 + `chmod 600`:
+```
+TEXT_CHANNEL_ID=<TEXT_CHANNEL_ID>   # progress·approval 발송 채널
+USER_ID=<USER_ID>                   # ack: 영우 본인 텍스트 메시지 필터(🎤 음성 발화는 무관)
+CLAUDE_BOT_ID=<봇#2 user id>        # ack 호환
+```
+- `.gitignore`에 `.env` 추가(`grep -qx '.env' .gitignore` 확인 후).
+- ⚠️ 이건 `~/workspace/discord-voice-bridge/envs/<PROJ>.env`(voice-bridge **프로세스**가 읽는, 봇 #1 토큰·API 키 든 파일)와 **다른 파일**이다. 소비자가 달라 둘로 분리한다:
+  - `envs/<PROJ>.env` → voice-bridge pm2 프로세스(STT/TTS) — 봇 #1 토큰·채널 ID·API 키
+  - `<프로젝트>/.env` → Claude Code 알림 hook(ack/progress/approval) — 비밀 아닌 ID 3개
+
+**①-c 발송 검증** — 시드 직후 progress 스크립트를 1회 실행해 실제 전송을 확인한다(타이머를 과거로 세팅해 120초 쿨다운 통과):
+```bash
+F="/tmp/voice_bridge_progress_$(id -u)"; echo $(( $(date +%s) - 200 )) > "$F"
+CLAUDE_PROJECT_DIR="$PWD" bash ~/.claude/hooks/scripts/voice-notify-progress.sh </dev/null; rm -f "$F"
+```
+텍스트 채널에 "⚙️ 작업 진행 중…"이 뜨면 스크립트·값 정상. 안 뜨면 `BOT_TOKEN`(채널 `.env`)·`TEXT_CHANNEL_ID`(루트 `.env`)를 확인한다.
 
 **② 메모리** — `seed/memory/`의 7개 `.md` + `MEMORY.md`를 새 프로젝트의 메모리 디렉토리에 복사:
 - 경로: `~/.claude/projects/<인코딩된_프로젝트_절대경로>/memory/` — 절대경로의 `/`를 `-`로 치환한다(예: `/Users/kywpcm/workspace/foo` → `~/.claude/projects/-Users-kywpcm-workspace-foo/memory/`).
@@ -216,5 +235,6 @@ done
 - **봇 #2 미실행**: 봇 #2는 대상 프로젝트에서 `clauded --channels plugin:discord@claude-plugins-official`로 떠 있어야 DM·채널에 응답한다. 안 띄우면 메시지를 보내도 무응답이라 토큰 문제로 오인하기 쉽다.
 - **direnv 미반영**: `.envrc`를 만든 직후 같은 셸엔 `DISCORD_STATE_DIR`이 아직 안 떠 있을 수 있다. `clauded` 띄우기 전 디렉토리를 나갔다 재진입(`cd .. && cd -`)해 `export +DISCORD_STATE_DIR`을 확인할 것. 안 하면 글로벌 STATE_DIR을 읽어 프로젝트 봇 토큰을 못 찾아 봇 #2가 무응답이 된다.
 - **봇 #1 채널 권한 누락(음성 무음 실패의 1순위)**: OAuth 초대는 **길드 권한만** 준다. 채널이 비공개/카테고리 오버라이드면 봇 #1이 채널에 접근 못 해(`403 Missing Access`) 음성 연결이 `signalling→destroyed`만 반복하고 `ready`에 못 가 **UI에 안 보인다**. 게이트웨이 "Auto-joined" 로그는 길드 이벤트라 찍히므로 정상으로 오인하기 쉽다. → [수동 3]에서 두 채널 권한에 봇 #1을 직접 추가(음성: View/Connect/Speak, 텍스트: View/Send/Read History)하고, 봇 #1 토큰으로 `GET /channels/<id>`가 `200`인지 검증.
+- **hook용 루트 `.env` 누락(알림 무음 실패)**: ack·progress·approval은 `$PROJECT_DIR/.env`에서 `TEXT_CHANNEL_ID`·`USER_ID`를 읽는다. `envs/<PROJ>.env`(voice-bridge 프로세스용)만 만들고 루트 `.env`를 빠뜨리면 알림이 조용히 안 온다(no-op). [3-A ①-b]에서 hook과 세트로 생성하고 progress 스크립트 1회 실행으로 발송까지 검증. (소비자가 다른 별개 파일임 — 통합하지 않는다.)
 - **새 서버 생성**: 음성은 기존 서버에 채널만 추가. 봇이 프로젝트마다 다르므로 한 서버로 충분.
 - **API 키 하드코딩 금지**: `SONIOX/HUME/OPENAI` 키는 **public 플러그인 repo·스킬·seed에 절대 넣지 않는다**(유출). 프로젝트 불변 공유 키라, 로컬 출처(`~/.config/voice-bridge/shared-keys.env` 또는 기존 voice-bridge env)에서만 주입한다.
