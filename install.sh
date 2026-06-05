@@ -112,52 +112,14 @@ PY
   echo "  [merge] $dest ($count fields from sync-fields.json)"
 }
 
-# installed_plugins.json 전용: repo 메타데이터로 갱신하되,
-# sync-exclude.json의 제외 플러그인(예: discord) 엔트리는 라이브 머신 것을 보존한다.
-# (라이브 엔트리는 실제 경로, repo 엔트리는 <HOME> 플레이스홀더 — 치환은 이후 단계에서)
-merge_installed_plugins() {
-  local src="$1"
-  local dest="$2"
-
-  mkdir -p "$(dirname "$dest")"
-
-  if [ -f "$dest" ]; then
-    local backup="${dest}.bak"
-    echo "  [backup] $dest → $backup"
-    cp "$dest" "$backup"
-  fi
-
-  python3 - "$src" "$dest" "$EXCLUDE_FILE" <<'PY'
-import json, sys, os
-src_path, dest_path, exclude_path = sys.argv[1:]
-
-with open(src_path) as f:
-    src = json.load(f)
-live = {}
-if os.path.exists(dest_path):
-    with open(dest_path) as f:
-        live = json.load(f)
-
-excluded = set()
-if os.path.exists(exclude_path):
-    with open(exclude_path) as f:
-        excluded = set(json.load(f).get("plugins", []))
-
-result = dict(src)
-src_plugins = src.get("plugins", {})
-live_plugins = live.get("plugins", {})
-merged = {k: v for k, v in src_plugins.items() if k not in excluded}
-for pid in excluded:
-    if pid in live_plugins:
-        merged[pid] = live_plugins[pid]
-result["plugins"] = merged
-
-with open(dest_path, "w") as f:
-    json.dump(result, f, indent=2, ensure_ascii=False)
-    f.write("\n")
-PY
-  echo "  [merge] $dest (제외 플러그인은 라이브 보존)"
-}
+# installed_plugins.json은 이 스크립트가 관리하지 않는다 (의도적).
+# 이 파일은 Claude Code가 `claude plugin install/update` 시 cache 실물 기준으로
+# 자동 생성/갱신하는 파생 상태(derived state)다. 머신마다 cache에 존재하는 버전이
+# 다르므로, 한 머신의 정확한 버전·절대경로 스냅샷을 다른 머신에 강제 적용하면
+# 존재하지 않는 cache 경로를 가리켜 플러그인 로딩이 깨질 수 있다.
+# apply 흐름은 이미 `claude plugin marketplace update` + `claude plugin update/install`로
+# 이 파일을 정확히 채우므로, repo가 다시 덮어쓰지 않는다. (known_marketplaces.json은
+# 버전 비종속 경로라 안전하고 extraKnownMarketplaces와 보완 관계라 계속 설치한다.)
 
 echo "[1/4] 설정 파일 설치..."
 install_file "$DOTFILES_DIR/CLAUDE.md" "$CLAUDE_DIR/CLAUDE.md"
@@ -176,16 +138,13 @@ for script in "$DOTFILES_DIR"/hooks/scripts/*.sh; do
 done
 
 echo ""
-echo "[3/4] 플러그인 메타데이터 설치 (참조용)..."
-# installed_plugins.json: 제외 플러그인(discord 등)은 라이브 머신 것을 보존하며 머지
-merge_installed_plugins "$DOTFILES_DIR/meta/installed_plugins.json" "$CLAUDE_DIR/plugins/installed_plugins.json"
+echo "[3/4] 마켓플레이스 메타데이터 설치 (참조용)..."
+# known_marketplaces.json만 설치한다. installed_plugins.json은 Claude Code가 관리하므로 건드리지 않는다 (위 주석 참고).
 install_file "$DOTFILES_DIR/meta/known_marketplaces.json" "$CLAUDE_DIR/plugins/known_marketplaces.json"
 
 echo ""
 echo "[4/4] 경로 치환..."
-# installed_plugins.json과 known_marketplaces.json의 <HOME> 플레이스홀더를 실제 경로로 변경
-sed -i '' "s|<HOME>|$HOME|g" "$CLAUDE_DIR/plugins/installed_plugins.json" 2>/dev/null || \
-sed -i "s|<HOME>|$HOME|g" "$CLAUDE_DIR/plugins/installed_plugins.json"
+# known_marketplaces.json의 <HOME> 플레이스홀더를 실제 경로로 변경
 sed -i '' "s|<HOME>|$HOME|g" "$CLAUDE_DIR/plugins/known_marketplaces.json" 2>/dev/null || \
 sed -i "s|<HOME>|$HOME|g" "$CLAUDE_DIR/plugins/known_marketplaces.json"
 

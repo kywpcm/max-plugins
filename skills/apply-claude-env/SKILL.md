@@ -133,10 +133,12 @@ install.sh가 설치하는 항목:
 - `CLAUDE.md` — 한국어 응답, 상태 알림 규칙 (전체 복사)
 - `settings.json` — **`dotfiles/sync-fields.json`에 나열된 필드만 머지** (현재 `permissions` / `hooks` / `statusLine` / `enabledPlugins` / `extraKnownMarketplaces` 5개). 라이브의 다른 키(`effortLevel`, `channelsEnabled`, `skipDangerousModePermissionPrompt`, `skipAutoPermissionPrompt` 등 머신별 개인 설정)는 보존됨. 기존 파일은 `.bak`으로 백업. 동기화 대상을 바꾸려면 `sync-fields.json` 한 곳만 수정.
 - `statusline-command.sh` — tmux 상태줄 스크립트 (전체 복사)
-- 훅 스크립트 — 위험 명령어 차단 (전체 복사)
-- 플러그인 메타데이터 — installed_plugins.json (제외 플러그인은 라이브 보존 머지), known_marketplaces.json (전체 복사)
+- 훅 스크립트 — `dotfiles/hooks/scripts/*.sh` 전체 복사 (글로벌 차단 `block-dangerous.sh` + 음성 워크플로 자산 `voice-notify-*.sh`)
+- 마켓플레이스 메타데이터 — known_marketplaces.json (전체 복사)
 
-**제외 대상 (`dotfiles/sync-exclude.json`):** 이 파일의 `plugins`/`channels`에 나열된 항목(현재 `discord@claude-plugins-official` 플러그인, `discord` 채널)은 sync/apply 어느 방향에서도 건드리지 않는다. discord는 각 머신에서 따로 설치·설정한다. `enabledPlugins`와 `installed_plugins.json`을 머지할 때 제외 플러그인의 **라이브 머신 상태는 그대로 보존**되며 repo가 추가/제거하지 않는다. 제외 대상을 바꾸려면 `sync-exclude.json` 한 곳만 수정한다.
+> **`installed_plugins.json`은 install.sh가 건드리지 않는다 (의도적).** 이 파일은 Claude Code가 Step 5의 `claude plugin install/update`로 cache 실물 기준 자동 관리하는 파생 상태다. repo 스냅샷으로 덮으면 머신마다 다른 cache 상태와 어긋나 존재하지 않는 버전 경로를 가리킬 수 있어, repo에서 아예 동기화하지 않는다.
+
+**제외 대상 (`dotfiles/sync-exclude.json`):** 이 파일의 `plugins`/`channels`에 나열된 항목(현재 `discord@claude-plugins-official` 플러그인, `discord` 채널)은 sync/apply 어느 방향에서도 건드리지 않는다. discord는 각 머신에서 따로 설치·설정한다. `enabledPlugins`를 머지할 때 제외 플러그인의 **라이브 머신 상태는 그대로 보존**되며 repo가 추가/제거하지 않는다. (`installed_plugins.json`은 위처럼 아예 안 건드리므로 discord 엔트리도 자연히 보존된다.) 제외 대상을 바꾸려면 `sync-exclude.json` 한 곳만 수정한다.
 
 ### Step 7: 수동 설정 안내
 
@@ -182,11 +184,15 @@ done
 # 상태줄 스크립트 확인
 [ -f ~/.claude/statusline-command.sh ] && echo "✅ statusline-command.sh" || echo "❌ statusline-command.sh"
 
-# 플러그인 메타데이터 확인
-[ -f ~/.claude/plugins/installed_plugins.json ] && echo "✅ installed_plugins.json" || echo "❌ installed_plugins.json"
+# 플러그인 레지스트리 확인 (Step 5의 claude plugin install/update가 생성 — install.sh가 아님)
+[ -f ~/.claude/plugins/installed_plugins.json ] && echo "✅ installed_plugins.json (Claude Code 관리)" || echo "❌ installed_plugins.json"
+
+# 마켓플레이스 메타데이터 확인
+[ -f ~/.claude/plugins/known_marketplaces.json ] && echo "✅ known_marketplaces.json" || echo "❌ known_marketplaces.json"
 ```
 
 > 제외 대상(discord 등)은 install.sh가 검증하지 않는다. 머신별 관리 항목이므로 의도된 동작이다.
+> `installed_plugins.json`은 install.sh가 만들지 않는다 — Step 5에서 Claude Code가 채운다.
 
 ### Step 9: 완료 보고
 

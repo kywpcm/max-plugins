@@ -23,10 +23,10 @@ version: 0.1.0
 
 - 라이브 환경이 source of truth이다. repo는 라이브를 따라간다.
 - 민감 정보(봇 토큰, 유저 ID)는 절대 커밋하지 않는다.
-- `installed_plugins.json`의 경로는 `<HOME>` 플레이스홀더로 변환한다.
+- **`installed_plugins.json`은 sync 대상이 아니다.** Claude Code가 `claude plugin install/update` 시 cache 실물 기준으로 자동 생성/갱신하는 파생 상태(derived state)이며, 머신마다 cache에 있는 버전·경로가 달라 한 머신의 스냅샷을 repo로 공유하면 다른 머신에서 존재하지 않는 cache 경로를 가리켜 깨진다. repo에서 관리하는 플러그인 메타는 `known_marketplaces.json`뿐이며, 그 경로만 `<HOME>` 플레이스홀더로 변환한다.
 - 채널 access.json은 빈 allowlist 템플릿만 repo에 저장한다.
 - **settings.json은 `dotfiles/sync-fields.json`에 나열된 필드만 동기화**한다 (현재 5개: `permissions`, `hooks`, `statusLine`, `enabledPlugins`, `extraKnownMarketplaces`). 그 외 키(`effortLevel`, `channelsEnabled`, `skipDangerousModePermissionPrompt`, `skipAutoPermissionPrompt` 등)는 머신별 개인 선호로 간주하고 sync/apply 어느 방향에서도 건드리지 않는다. 동기화 대상을 늘리거나 줄이려면 `dotfiles/sync-fields.json` 한 곳만 수정하면 양방향 모두 반영된다.
-- **`dotfiles/sync-exclude.json`에 나열된 플러그인/채널은 sync/apply 양방향에서 제외**한다 (현재 `discord@claude-plugins-official` 플러그인, `discord` 채널). 제외 플러그인은 repo의 `enabledPlugins`/`installed_plugins.json`에 **절대 기록하지 않고**, 제외 채널은 "새 채널 감지"에서 건너뛴다. discord 같은 항목은 각 머신에서 따로 관리된다. 제외 대상을 바꾸려면 `dotfiles/sync-exclude.json` 한 곳만 수정하면 양방향 모두 반영된다.
+- **`dotfiles/sync-exclude.json`에 나열된 플러그인/채널은 sync/apply 양방향에서 제외**한다 (현재 `discord@claude-plugins-official` 플러그인, `discord` 채널). 제외 플러그인은 repo의 `enabledPlugins`에 **절대 기록하지 않고**, 제외 채널은 "새 채널 감지"에서 건너뛴다. discord 같은 항목은 각 머신에서 따로 관리된다. 제외 대상을 바꾸려면 `dotfiles/sync-exclude.json` 한 곳만 수정하면 양방향 모두 반영된다.
 
 ## Workflow
 
@@ -106,28 +106,19 @@ for live in ~/.claude/hooks/scripts/*.sh; do
 done
 ```
 
-### Step 3: 플러그인 메타데이터 비교
+### Step 3: 마켓플레이스 메타데이터 비교
 
-메타데이터 파일은 경로에 실제 HOME 경로가 들어 있으므로, 비교 전에 `<HOME>` 플레이스홀더로 변환해서 비교해야 한다.
+> `installed_plugins.json`은 **비교·동기화하지 않는다** (파생 상태 — 핵심 원칙 참고). repo에서 관리하는 플러그인 메타는 `known_marketplaces.json`뿐이다.
+
+`known_marketplaces.json`은 경로에 실제 HOME 경로가 들어 있으므로, 비교 전에 `<HOME>` 플레이스홀더로 변환해서 비교한다.
 
 ```bash
-# 라이브 installed_plugins.json: HOME 경로를 <HOME>으로 치환하고,
-# sync-exclude.json의 제외 플러그인(discord 등)을 걸러낸 뒤 비교
-sed "s|$HOME|<HOME>|g" ~/.claude/plugins/installed_plugins.json > /tmp/live_installed_plugins_raw.json
-python3 - "$REPO_DIR" <<'PY' > /tmp/live_installed_plugins.json
-import json, sys
-repo_dir = sys.argv[1]
-excluded = set(json.load(open(f"{repo_dir}/dotfiles/sync-exclude.json")).get("plugins", []))
-data = json.load(open("/tmp/live_installed_plugins_raw.json"))
-data["plugins"] = {k: v for k, v in data.get("plugins", {}).items() if k not in excluded}
-print(json.dumps(data, indent=2, ensure_ascii=False))
-PY
-diff /tmp/live_installed_plugins.json "$REPO_DIR/dotfiles/meta/installed_plugins.json"
-
-# known_marketplaces.json도 동일하게 (마켓플레이스는 제외 대상 아님)
+# known_marketplaces.json: HOME 경로를 <HOME>으로 치환 후 비교 (마켓플레이스는 제외 대상 아님)
 sed "s|$HOME|<HOME>|g" ~/.claude/plugins/known_marketplaces.json > /tmp/live_known_marketplaces.json
 diff /tmp/live_known_marketplaces.json "$REPO_DIR/dotfiles/meta/known_marketplaces.json"
 ```
+
+> `lastUpdated` 타임스탬프만 다른 경우가 잦다 — 의미 있는 변경(마켓플레이스 추가/삭제/소스 변경)이 없으면 동기화하지 않아도 된다.
 
 ### Step 4: 채널 설정 비교
 
@@ -156,7 +147,7 @@ python3 -c "import json; print(' '.join(json.load(open('$REPO_DIR/dotfiles/sync-
 | 파일 | 상태 | 설명 |
 |------|------|------|
 | settings.json | 변경됨 | 새 플러그인 추가, 훅 구조 변경 |
-| installed_plugins.json | 변경됨 | 새 플러그인 엔트리 추가 |
+| hooks/scripts/*.sh | 변경됨 | 새 hook 스크립트 추가 |
 | CLAUDE.md | 동일 | - |
 ```
 
@@ -196,21 +187,9 @@ PY
 **일반 설정 파일** (CLAUDE.md, statusline-command.sh, hook scripts):
 - 라이브 파일을 그대로 repo에 복사한다.
 
-**플러그인 메타데이터** (installed_plugins.json, known_marketplaces.json):
-- `$HOME` 경로를 `<HOME>`으로 치환하여 저장하되, `installed_plugins.json`은 제외 플러그인(discord 등) 엔트리를 빼고 저장한다.
+**마켓플레이스 메타데이터** (known_marketplaces.json만):
+- `$HOME` 경로를 `<HOME>`으로 치환하여 저장한다. (`installed_plugins.json`은 동기화하지 않는다 — 파생 상태.)
 ```bash
-# installed_plugins.json: 치환 + 제외 플러그인 드롭
-python3 - "$REPO_DIR" <<PY > "$REPO_DIR/dotfiles/meta/installed_plugins.json"
-import json, os, sys
-repo_dir = sys.argv[1]
-excluded = set(json.load(open(f"{repo_dir}/dotfiles/sync-exclude.json")).get("plugins", []))
-raw = open(os.path.expanduser("~/.claude/plugins/installed_plugins.json")).read().replace(os.path.expanduser("~"), "<HOME>")
-data = json.loads(raw)
-data["plugins"] = {k: v for k, v in data.get("plugins", {}).items() if k not in excluded}
-print(json.dumps(data, indent=2, ensure_ascii=False))
-PY
-
-# known_marketplaces.json: 치환만 (마켓플레이스는 제외 대상 아님)
 sed "s|$HOME|<HOME>|g" ~/.claude/plugins/known_marketplaces.json > "$REPO_DIR/dotfiles/meta/known_marketplaces.json"
 ```
 
