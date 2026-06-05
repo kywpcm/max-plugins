@@ -11,3 +11,6 @@ conv-logs/
 # Python bytecode 캐시
 __pycache__/
 *.pyc
+
+# Discord 채널 (토큰·allowlist — 머신별 로컬 전용)
+.claude/channels/
