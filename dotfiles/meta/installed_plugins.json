@@ -14,10 +14,10 @@
     "firecrawl@claude-plugins-official": [
       {
         "scope": "user",
-        "installPath": "<HOME>/.claude/plugins/cache/claude-plugins-official/firecrawl/1.0.8",
-        "version": "1.0.8",
+        "installPath": "<HOME>/.claude/plugins/cache/claude-plugins-official/firecrawl/1.0.9",
+        "version": "1.0.9",
         "installedAt": "2026-04-03T04:59:32.381Z",
-        "lastUpdated": "2026-04-17T13:10:43.742Z",
+        "lastUpdated": "2026-06-03T06:34:19.152Z",
         "gitCommitSha": "684b975c8cc6bd0fcfa96f787900bf87fffeef57"
       }
     ],
@@ -62,11 +62,11 @@
     "dotfiles-claude-code@max-plugins": [
       {
         "scope": "user",
-        "installPath": "<HOME>/.claude/plugins/cache/max-plugins/dotfiles-claude-code/1.10.1",
-        "version": "1.10.1",
+        "installPath": "<HOME>/.claude/plugins/cache/max-plugins/dotfiles-claude-code/1.14.0",
+        "version": "1.14.0",
         "installedAt": "2026-04-14T12:18:35.784Z",
-        "lastUpdated": "2026-05-22T08:06:02.321Z",
-        "gitCommitSha": "2be47e3fde46f6c8fb61b7f8a3197cfa30fe1b10"
+        "lastUpdated": "2026-06-05T13:23:50.187Z",
+        "gitCommitSha": "fd7cb4bfba64a9b2c172b7af18f59d43395f18a9"
       }
     ],
     "mafia-codereview@mafia-codereview-harness": [
