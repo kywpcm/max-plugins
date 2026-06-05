@@ -133,7 +133,7 @@ install.sh가 설치하는 항목:
 - `CLAUDE.md` — 한국어 응답, 상태 알림 규칙 (전체 복사)
 - `settings.json` — **`dotfiles/sync-fields.json`에 나열된 필드만 머지** (현재 `permissions` / `hooks` / `statusLine` / `enabledPlugins` / `extraKnownMarketplaces` 5개). 라이브의 다른 키(`effortLevel`, `channelsEnabled`, `skipDangerousModePermissionPrompt`, `skipAutoPermissionPrompt` 등 머신별 개인 설정)는 보존됨. 기존 파일은 `.bak`으로 백업. 동기화 대상을 바꾸려면 `sync-fields.json` 한 곳만 수정.
 - `statusline-command.sh` — tmux 상태줄 스크립트 (전체 복사)
-- 훅 스크립트 — 위험 명령어 차단, 커밋 전 대화 저장 (전체 복사)
+- 훅 스크립트 — 위험 명령어 차단 (전체 복사)
 - 플러그인 메타데이터 — installed_plugins.json (제외 플러그인은 라이브 보존 머지), known_marketplaces.json (전체 복사)
 
 **제외 대상 (`dotfiles/sync-exclude.json`):** 이 파일의 `plugins`/`channels`에 나열된 항목(현재 `discord@claude-plugins-official` 플러그인, `discord` 채널)은 sync/apply 어느 방향에서도 건드리지 않는다. discord는 각 머신에서 따로 설치·설정한다. `enabledPlugins`와 `installed_plugins.json`을 머지할 때 제외 플러그인의 **라이브 머신 상태는 그대로 보존**되며 repo가 추가/제거하지 않는다. 제외 대상을 바꾸려면 `sync-exclude.json` 한 곳만 수정한다.
@@ -175,7 +175,6 @@ echo "DISCORD_BOT_TOKEN=여기에_봇_토큰" > ~/.claude/channels/discord/.env
 
 # 훅 스크립트 존재 및 실행 권한 확인
 [ -x ~/.claude/hooks/scripts/block-dangerous.sh ] && echo "✅ block-dangerous.sh" || echo "❌ block-dangerous.sh"
-[ -x ~/.claude/hooks/scripts/save-conv-before-commit.sh ] && echo "✅ save-conv-before-commit.sh" || echo "❌ save-conv-before-commit.sh"
 
 # 상태줄 스크립트 확인
 [ -f ~/.claude/statusline-command.sh ] && echo "✅ statusline-command.sh" || echo "❌ statusline-command.sh"

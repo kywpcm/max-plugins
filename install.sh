@@ -167,9 +167,7 @@ install_file "$DOTFILES_DIR/statusline-command.sh" "$CLAUDE_DIR/statusline-comma
 echo ""
 echo "[2/4] 훅 스크립트 설치..."
 install_file "$DOTFILES_DIR/hooks/scripts/block-dangerous.sh" "$CLAUDE_DIR/hooks/scripts/block-dangerous.sh"
-install_file "$DOTFILES_DIR/hooks/scripts/save-conv-before-commit.sh" "$CLAUDE_DIR/hooks/scripts/save-conv-before-commit.sh"
 chmod +x "$CLAUDE_DIR/hooks/scripts/block-dangerous.sh"
-chmod +x "$CLAUDE_DIR/hooks/scripts/save-conv-before-commit.sh"
 
 echo ""
 echo "[3/4] 플러그인 메타데이터 설치 (참조용)..."

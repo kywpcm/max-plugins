@@ -49,7 +49,6 @@ repo를 찾지 못하면 사용자에게 경로를 물어본다. 찾으면 `REPO
 | `~/.claude/CLAUDE.md` | `$REPO_DIR/dotfiles/CLAUDE.md` | 전체 diff |
 | `~/.claude/statusline-command.sh` | `$REPO_DIR/dotfiles/statusline-command.sh` | 전체 diff |
 | `~/.claude/hooks/scripts/block-dangerous.sh` | `$REPO_DIR/dotfiles/hooks/scripts/block-dangerous.sh` | 전체 diff |
-| `~/.claude/hooks/scripts/save-conv-before-commit.sh` | `$REPO_DIR/dotfiles/hooks/scripts/save-conv-before-commit.sh` | 전체 diff |
 
 settings.json은 `dotfiles/sync-fields.json`에 나열된 필드만 떼어내서 비교한다 (그 외 키 차이는 의도된 머신별 차이이므로 노이즈로 본다). 라이브 추출 시 `sync-exclude.json`의 제외 플러그인은 `enabledPlugins`에서 걸러내, repo가 discord 같은 항목을 절대 흡수하지 않도록 한다:
 

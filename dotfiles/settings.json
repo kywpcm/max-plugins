@@ -49,15 +49,6 @@
             "command": "bash ~/.claude/hooks/scripts/block-dangerous.sh"
           }
         ]
-      },
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash ~/.claude/hooks/scripts/save-conv-before-commit.sh"
-          }
-        ]
       }
     ]
   },

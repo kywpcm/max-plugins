@@ -10,7 +10,7 @@ description: >
   or wants a summary of what was discussed saved to a file.
   Do NOT trigger for memory saving (use memory system) or for git commit messages.
 user-invocable: true
-version: 0.1.0
+version: 0.2.0
 ---
 
 # save-conversation
@@ -23,12 +23,20 @@ The goal is to create a readable record of what `User(사용자)` and Claude dis
 
 **IMPORTANT:** Always resolve the project root via `git rev-parse --show-toplevel` and use that as the base for `conv-logs/`. Do NOT use the current working directory — it may be a subdirectory.
 
-### Step 1: Create the output directory
+### Step 1: Ensure `conv-logs/` is gitignored, then create the output directory
 
-Use the current date to create a hierarchical directory structure:
+**IMPORTANT:** Conversation logs are **local-only** — they must never be committed. Before creating the `conv-logs/` directory for the first time, make sure the project's `.gitignore` ignores it. This is **idempotent**: if `conv-logs/` is already ignored, skip (no duplicate entry). Do **NOT** auto-commit the `.gitignore` change — leave it as an uncommitted change for the user to commit when they wish.
 
 ```bash
 PROJECT_ROOT=$(git rev-parse --show-toplevel)
+
+# Register conv-logs/ in .gitignore only if it isn't already ignored (idempotent).
+# check-ignore also catches the case where a parent/global .gitignore already covers it.
+if ! git -C "$PROJECT_ROOT" check-ignore -q conv-logs 2>/dev/null; then
+  printf '\n# 대화 로그 (save-conversation 스킬 — 로컬 전용)\nconv-logs/\n' >> "$PROJECT_ROOT/.gitignore"
+fi
+
+# Create the hierarchical output directory
 YYYYMM=$(date +%Y%m)
 DD=$(date +%d)
 mkdir -p "${PROJECT_ROOT}/conv-logs/${YYYYMM}/${DD}"
@@ -124,11 +132,7 @@ Guidelines for writing the summary:
 
 ### Step 5: Save and confirm
 
-Write the conversation log file using the Write tool, then run `git add` to track it:
-
-```bash
-git add "${FILENAME}"
-```
+Write the conversation log file using the Write tool. **Do NOT `git add` the log** — `conv-logs/` is gitignored (local-only), so staging it would fail or be meaningless.
 
 Then tell the user:
 > "대화 내용을 저장했습니다: `conv-logs/{yyyymm}/{dd}/conv-{timestamp}.md`"

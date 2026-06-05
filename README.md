@@ -24,7 +24,6 @@
 | `settings.json` | 권한, 훅, 플러그인 설정 |
 | `statusline-command.sh` | tmux 상태줄 스크립트 |
 | `block-dangerous.sh` | 위험 명령어 차단 훅 |
-| `save-conv-before-commit.sh` | 커밋 전 대화 저장 훅 |
 
 ## 설치 방법
 
