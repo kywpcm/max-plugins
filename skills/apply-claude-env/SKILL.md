@@ -79,11 +79,11 @@ git clone https://github.com/kywpcm/max-plugins.git ~/workspace/max-plugins
 
 ```bash
 if [ -n "$REPO_DIR" ] && [ -d "$REPO_DIR/.git" ]; then
-  cd "$REPO_DIR" && git pull origin master
+  cd "$REPO_DIR" && git pull --ff-only origin master
 fi
 ```
 
-workspace clone이 없으면 이 단계는 건너뛴다.
+`--ff-only`로 의도치 않은 머지 커밋을 막는다. fast-forward가 불가능하면 사용자에게 알린다. workspace clone이 없으면 이 단계는 건너뛰고, 플러그인 cache는 Step 5의 마켓플레이스 update가 최신화한다(= cache 기반 사용 시의 pull).
 
 ### Step 5: 마켓플레이스 및 플러그인 동기화
 
@@ -173,8 +173,11 @@ echo "DISCORD_BOT_TOKEN=여기에_봇_토큰" > ~/.claude/channels/discord/.env
 # CLAUDE.md 존재 확인
 [ -f ~/.claude/CLAUDE.md ] && echo "✅ CLAUDE.md" || echo "❌ CLAUDE.md"
 
-# 훅 스크립트 존재 및 실행 권한 확인
-[ -x ~/.claude/hooks/scripts/block-dangerous.sh ] && echo "✅ block-dangerous.sh" || echo "❌ block-dangerous.sh"
+# 훅 스크립트 존재 및 실행 권한 확인 (dotfiles/hooks/scripts/*.sh 전체)
+# block-dangerous.sh(글로벌 차단) + voice-notify-{ack,approval,progress}.sh(음성 워크플로 자산)
+for name in block-dangerous voice-notify-ack voice-notify-approval voice-notify-progress; do
+  [ -x ~/.claude/hooks/scripts/$name.sh ] && echo "✅ $name.sh" || echo "❌ $name.sh"
+done
 
 # 상태줄 스크립트 확인
 [ -f ~/.claude/statusline-command.sh ] && echo "✅ statusline-command.sh" || echo "❌ statusline-command.sh"

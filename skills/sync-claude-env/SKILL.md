@@ -39,6 +39,16 @@ find ~/workspace ~/projects ~ -maxdepth 3 -type d -name "max-plugins" 2>/dev/nul
 
 repo를 찾지 못하면 사용자에게 경로를 물어본다. 찾으면 `REPO_DIR` 변수에 저장한다.
 
+**비교·커밋 전에 반드시 origin/master를 pull한다.** sync는 repo에 **쓰기**를 하므로, 로컬이 원격보다 뒤처진 상태에서 커밋하면 다른 머신의 최신 변경 위에 stale base로 커밋해 push 충돌·분기가 생긴다. 작업 시작 전 최신화로 이를 막는다.
+
+```bash
+if [ -n "$REPO_DIR" ] && [ -d "$REPO_DIR/.git" ]; then
+  cd "$REPO_DIR" && git pull --ff-only origin master
+fi
+```
+
+> `--ff-only`로 pull해 의도치 않은 머지 커밋을 막는다. fast-forward가 불가능하면(로컬에 미푸시 커밋 존재) 사용자에게 알리고, 먼저 정리(rebase/push)할지 확인한 뒤 진행한다.
+
 ### Step 2: 파일별 비교
 
 아래 파일들을 라이브 환경과 repo 사이에서 비교한다:
@@ -48,7 +58,9 @@ repo를 찾지 못하면 사용자에게 경로를 물어본다. 찾으면 `REPO
 | `~/.claude/settings.json` | `$REPO_DIR/dotfiles/settings.json` | **5개 필드만** 추출 후 diff |
 | `~/.claude/CLAUDE.md` | `$REPO_DIR/dotfiles/CLAUDE.md` | 전체 diff |
 | `~/.claude/statusline-command.sh` | `$REPO_DIR/dotfiles/statusline-command.sh` | 전체 diff |
-| `~/.claude/hooks/scripts/block-dangerous.sh` | `$REPO_DIR/dotfiles/hooks/scripts/block-dangerous.sh` | 전체 diff |
+| `~/.claude/hooks/scripts/*.sh` | `$REPO_DIR/dotfiles/hooks/scripts/*.sh` | **모든 hook 스크립트** 전체 diff |
+
+> hook 스크립트는 특정 파일을 나열하지 않고 `~/.claude/hooks/scripts/*.sh` 전체를 비교한다. 현재 `block-dangerous.sh`(글로벌 PreToolUse 차단)와 `voice-notify-{ack,approval,progress}.sh`(project-discord-setup 음성 워크플로 자산)가 여기에 해당한다. 새 스크립트가 라이브에만 있으면 "추가됨"으로 잡고 repo에 복사한다.
 
 settings.json은 `dotfiles/sync-fields.json`에 나열된 필드만 떼어내서 비교한다 (그 외 키 차이는 의도된 머신별 차이이므로 노이즈로 본다). 라이브 추출 시 `sync-exclude.json`의 제외 플러그인은 `enabledPlugins`에서 걸러내, repo가 discord 같은 항목을 절대 흡수하지 않도록 한다:
 
@@ -80,7 +92,18 @@ diff /tmp/live_settings_subset.json /tmp/repo_settings_subset.json
 
 ```bash
 diff ~/.claude/CLAUDE.md "$REPO_DIR/dotfiles/CLAUDE.md"
-# ... 각 파일에 대해 반복
+diff ~/.claude/statusline-command.sh "$REPO_DIR/dotfiles/statusline-command.sh"
+
+# hook 스크립트: 라이브의 *.sh 전체를 순회하며 비교 (repo에 없으면 "추가됨")
+for live in ~/.claude/hooks/scripts/*.sh; do
+  name="$(basename "$live")"
+  repo_file="$REPO_DIR/dotfiles/hooks/scripts/$name"
+  if [ ! -f "$repo_file" ]; then
+    echo "[추가됨] $name — repo에 없음, 복사 필요"
+  else
+    diff "$live" "$repo_file" && echo "[동일] $name"
+  fi
+done
 ```
 
 ### Step 3: 플러그인 메타데이터 비교
