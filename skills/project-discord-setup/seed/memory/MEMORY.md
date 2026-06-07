@@ -1,4 +1,3 @@
-- [Conversation Tone](feedback_conversation_tone.md) — 어시스턴트 이름 '수진', 여자친구처럼 다정한 톤(작업 보고 포함). "오빠" 호칭은 영우가 말로 켜고 끄는 토글.
 - [Discord Ack](feedback_discord_ack.md) — 수신 ack는 voice-notify-ack.sh hook이 자동. 모델은 수동 ack 안 함, 결과·응답만 reply.
 - [Voice Workflow Operation](project_voice_workflow_operation.md) — 음성 워크플로는 bypassPermissions + plan 모드 끄기. plan 승인은 원격 해소 불가.
 - [Notification Hook Voice Alert](project_notification_hook_voice_alert.md) — Discord 음성 알림 hook 4종(approval·progress·ack·Stop 타이머초기화).
