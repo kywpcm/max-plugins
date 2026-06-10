@@ -158,6 +158,29 @@ def collect_glossary_terms(texts_paths: list[Path]) -> list[tuple[str, int]]:
     return [(term, count) for term, count in counter.most_common() if count >= 2]
 
 
+def render_comments_for_prd(node_dir: Path) -> str | None:
+    """node_dir/comments.md 를 PRD 노드 섹션에 임베드할 수 있게 변환.
+
+    standalone 파일의 h1 제목 + 메타 줄은 떼고, ``## 스레드`` 헤딩은 ``#### 스레드``
+    로 강등해 노드 sub-section(h3) 아래에 자연스럽게 들어가게 한다. 댓글 원문은
+    결정적으로 PRD에 보존된다 (LLM 분석을 거치지 않음).
+    """
+    p = node_dir / "comments.md"
+    if not p.exists():
+        return None
+    out: list[str] = []
+    started = False
+    for ln in p.read_text(encoding="utf-8").splitlines():
+        if not started:
+            if ln.startswith("## 스레드"):
+                started = True
+            else:
+                continue
+        out.append(ln.replace("## 스레드", "#### 스레드", 1) if ln.startswith("## 스레드") else ln)
+    body = "\n".join(out).strip()
+    return body or None
+
+
 def render_node_section(
     index: int,
     file_key: str,
@@ -216,7 +239,36 @@ def render_node_section(
         )
     lines.append("")
 
+    # 3) 관련 댓글 (Figma) — 결정적으로 원문 보존 (있는 노드만)
+    comments_md = render_comments_for_prd(node_dir)
+    if comments_md:
+        lines.append(f"### {index}.3 관련 댓글 (Figma)")
+        lines.append("")
+        lines.append(comments_md)
+        lines.append("")
+
     return anchor, "\n".join(lines)
+
+
+def build_changes_section(summary: dict[str, Any]) -> str:
+    """extract 단계가 결정적으로 감지한 변경/추가 표시를 노드 링크와 함께 취합.
+
+    LLM을 거치지 않는 결정적 요약이다. 순수 숫자·2자 미만 토큰(번호 뱃지 등)은
+    노이즈로 제외한다.
+    """
+    items: list[str] = []
+    for n in summary.get("nodes") or []:
+        anchor = f"node-{safe_node_id(n['node_id'])}"
+        for ch in n.get("changes") or []:
+            text = " ".join((ch.get("text") or "").split())
+            if len(text) < 2 or text.isdigit():
+                continue
+            if len(text) > 120:
+                text = text[:120] + "…"
+            items.append(f"- `[{ch['label']}]` {text} → [{n['label']}](#{anchor})")
+    if not items:
+        return "_자동 감지된 변경/추가 표시 없음._"
+    return "\n".join(items)
 
 
 def build_prd(summary: dict[str, Any], mode: str) -> str:
@@ -246,7 +298,9 @@ def build_prd(summary: dict[str, Any], mode: str) -> str:
     )
 
     extract_meta = "\n".join(
-        f"- `{n['node_id']}` — label: {n['label']} / texts: {n['text_count']} / images: {n['image_count']}"
+        f"- `{n['node_id']}` — label: {n['label']} / texts: {n['text_count']} / "
+        f"images: {n['image_count']} / changes: {len(n.get('changes') or [])} / "
+        f"comments: {n.get('comment_count', 0)}"
         for n in nodes
     )
 
@@ -257,6 +311,7 @@ def build_prd(summary: dict[str, Any], mode: str) -> str:
         .replace("{{FIGMA_FILE_URL}}", figma_url)
         .replace("{{NODE_COUNT}}", str(len(nodes)))
         .replace("{{CONTEXT}}", context or "_없음_")
+        .replace("{{CHANGES}}", build_changes_section(summary))
         .replace("{{TOC}}", "\n".join(toc_lines))
         .replace("{{NODE_SECTIONS}}", "\n\n".join(sections))
         .replace("{{GLOSSARY}}", glossary_md)
