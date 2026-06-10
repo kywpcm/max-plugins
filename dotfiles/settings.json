@@ -24,7 +24,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "command -v terminal-notifier >/dev/null 2>&1 && terminal-notifier -title \"Claude Code\" -message \"$(tmux display-message -p -t $TMUX_PANE '#S / #I:#W / #P') 권한 승인 필요\" -sound Glass || true"
+            "command": "bash ~/.claude/hooks/scripts/notify-permission.sh"
           }
         ]
       }
