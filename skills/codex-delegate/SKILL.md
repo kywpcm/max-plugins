@@ -10,7 +10,7 @@ description: >
   or asks to run a task with an external OpenAI agent in parallel.
   Do NOT trigger for general "delegate" or "외부 AI" requests without mentioning
   Codex/OpenAI — those may be better handled by gemini-delegate or other tools.
-version: 0.3.0
+version: 0.4.0
 ---
 
 # Codex Delegate
@@ -58,12 +58,13 @@ codex exec '<TASK_PROMPT>' \
   --full-auto \
   --ephemeral \
   --skip-git-repo-check \
-  -m gpt-5.4 \
   -C "<WORKING_DIRECTORY>" \
   -o "$RESULT_FILE" \
-  2>&1
+  < /dev/null 2>&1
 echo "===CODEX_RESULT_FILE:$RESULT_FILE==="
 ```
+
+`< /dev/null` is required: `codex exec` reads stdin when launched without a TTY, so a background task without the redirect hangs indefinitely.
 
 For prompts containing single quotes, use a heredoc:
 
@@ -74,10 +75,9 @@ codex exec "$(cat <<'PROMPT'
 PROMPT
 )" \
   --full-auto --ephemeral --skip-git-repo-check \
-  -m gpt-5.4 \
   -C "<WORKING_DIRECTORY>" \
   -o "$RESULT_FILE" \
-  2>&1
+  < /dev/null 2>&1
 echo "===CODEX_RESULT_FILE:$RESULT_FILE==="
 ```
 
@@ -90,7 +90,7 @@ echo "===CODEX_RESULT_FILE:$RESULT_FILE==="
 | `--skip-git-repo-check` | Allow running outside git repositories |
 | `-C <dir>` | Set the working directory for the agent |
 | `-o <file>` | Save Codex's final response to a file |
-| `-m <model>` | Override model (e.g., `-m o3`, `-m o4-mini`) |
+| `-m <model>` | Override model (optional, uses CLI default if omitted) |
 | `--add-dir <dir>` | Additional writable directories beyond the workspace |
 | `--json` | Output events as JSONL to stdout (useful for structured parsing) |
 
@@ -132,7 +132,7 @@ When the user wants to compare approaches or get a second opinion, send the same
 ```bash
 # Launch Codex
 CODEX_RESULT="/tmp/codex-result-$(date +%s)-$RANDOM.md"
-codex exec '<TASK>' --full-auto --ephemeral -m gpt-5.4 -C "<DIR>" -o "$CODEX_RESULT" 2>&1
+codex exec '<TASK>' --full-auto --ephemeral -C "<DIR>" -o "$CODEX_RESULT" < /dev/null 2>&1
 
 # Launch Gemini (in a separate Bash call, same turn)
 GEMINI_RESULT="/tmp/gemini-result-$(date +%s)-$RANDOM.md"
@@ -143,11 +143,14 @@ When both complete, present a side-by-side comparison highlighting differences i
 
 ## Configuration Overrides
 
-Override model or behavior with `-m` or `-c` flags:
+By default, omit `-m` so the Codex CLI's own default model is used. Override only when the user explicitly requests a different model or behavior:
 
 ```bash
-codex exec "task" --full-auto --ephemeral -m gpt-5.4
-codex exec "task" --full-auto --ephemeral -m gpt-5.4 -c model_reasoning_effort="high"
+# Default (CLI default model)
+codex exec "task" --full-auto --ephemeral
+
+# Override with specific model or reasoning effort
+codex exec "task" --full-auto --ephemeral -m o3 -c model_reasoning_effort="high"
 ```
 
 ## Error Handling
