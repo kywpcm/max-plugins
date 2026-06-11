@@ -11,7 +11,7 @@ figma-prd/
 ├── SKILL.md                              # 스킬 정의 (트리거·워크플로·사용법)
 ├── README.md                             # 이 파일
 ├── scripts/
-│   ├── extract.py                        # Figma REST API → texts.md([변경]/[추가] 태그)/comments.md/images/screenshot
+│   ├── extract.py                        # Figma REST API → texts.md([변경]/[추가]/[수정] 태그)/comments.md/images/screenshot
 │   └── synthesize.py                     # texts + analysis → 최종 prd.md
 ├── prompts/
 │   ├── analyze.backend.md                # 서브에이전트 백엔드 분석 프롬프트
@@ -39,6 +39,6 @@ cp ~/.claude/plugins/.../figma-prd/templates/config.example.json ./figma-prd.con
 
 ## 파이프라인
 
-1. `extract.py` — REST API로 노드 트리·텍스트·이미지 수집 (결정적). "변경"/"추가" 박스를 geometry로 감지해 콘텐츠에 `[변경]`/`[추가]` 태그를 달고, 노드 관련 댓글 스레드를 `comments.md`로 수집.
+1. `extract.py` — REST API로 노드 트리·텍스트·이미지 수집 (결정적). "변경"/"추가"/"수정" 박스를 geometry로 감지해 콘텐츠에 `[변경]`/`[추가]`/`[수정]` 태그를 달고, 노드 관련 댓글 스레드를 `comments.md`로 수집.
 2. Agent 서브에이전트 — 노드별 모드별 멀티모달 분석 (병렬 가능). 변경 마커·댓글을 반영.
-3. `synthesize.py` — 텍스트 + 분석 결과 → PRD 마크다운 합성 (상단 `변경·추가 요약` 섹션 포함)
+3. `synthesize.py` — 텍스트 + 분석 결과 → PRD 마크다운 합성 (상단 `변경·추가·수정 요약` 섹션 포함)

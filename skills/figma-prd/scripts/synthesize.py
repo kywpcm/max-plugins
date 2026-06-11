@@ -251,7 +251,7 @@ def render_node_section(
 
 
 def build_changes_section(summary: dict[str, Any]) -> str:
-    """extract 단계가 결정적으로 감지한 변경/추가 표시를 노드 링크와 함께 취합.
+    """extract 단계가 결정적으로 감지한 변경/추가/수정 표시를 노드 링크와 함께 취합.
 
     LLM을 거치지 않는 결정적 요약이다. 순수 숫자·2자 미만 토큰(번호 뱃지 등)은
     노이즈로 제외한다.
@@ -267,7 +267,7 @@ def build_changes_section(summary: dict[str, Any]) -> str:
                 text = text[:120] + "…"
             items.append(f"- `[{ch['label']}]` {text} → [{n['label']}](#{anchor})")
     if not items:
-        return "_자동 감지된 변경/추가 표시 없음._"
+        return "_자동 감지된 변경/추가/수정 표시 없음._"
     return "\n".join(items)
 
 

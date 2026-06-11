@@ -29,7 +29,7 @@ Figma 기획서 → PRD 마크다운 정제 스킬.
   - 메인 컨텍스트에는 짧은 보고만 돌아옴 → 노드 수가 많아도 안전.
 - **모드 분기**: `backend | frontend | both`. 모드별로 분석 프롬프트·PRD 템플릿이 다름.
 - **노드별 제외**: `exclude_node_ids`로 트리 가지치기 + `exclude_notes` 자연어 사유 첨부.
-- **변경/추가 표시 결정적 추출**: "변경"·"추가" 라벨 TEXT 노드의 주석 박스 영역(bbox)을 찾아, 그 안에 들어가는 콘텐츠 텍스트에 `[변경]`/`[추가]` 태그를 단다(색/fill 판정이 아니라 라벨 일치 + geometry 겹침이라 결정적). PRD 상단에 `## 변경·추가 요약` 섹션으로 취합 → 코딩 에이전트가 변경분을 우선 인지. 라벨은 `change_labels`로 override.
+- **변경/추가/수정 표시 결정적 추출**: "변경"·"추가"·"수정" 라벨 TEXT 노드의 주석 박스 영역(bbox)을 찾아, 그 안에 들어가는 콘텐츠 텍스트에 `[변경]`/`[추가]`/`[수정]` 태그를 단다(색/fill 판정이 아니라 라벨 일치 + geometry 겹침이라 결정적). PRD 상단에 `## 변경·추가·수정 요약` 섹션으로 취합 → 코딩 에이전트가 변경분을 우선 인지. 라벨은 `change_labels`로 override.
 - **댓글 수집**: `/v1/files/{key}/comments`를 파일당 1회 호출해 노드 서브트리에 앵커된 스레드(해결/미해결 모두, `[RESOLVED]` 표기)를 `comments.md`로 직렬화. (a) **서브에이전트 입력**으로 분석에 반영되고, (b) PRD 노드 섹션의 **`관련 댓글 (Figma)` 하위 섹션에 원문이 결정적으로 직접 수록**된다(LLM 누락 방지). 디자인 본문엔 없는 최신 결정·변경 논의를 포착.
 - **숨김 노드(`hidden=true`) 자동 필터링** ("디스크립션입니다." 같은 placeholder 방지).
 - **PRD 본문은 `analysis.{mode}.md` 중심**: 서브에이전트가 정제한 분석 결과만 PRD에 포함된다. 원본 `texts.md`는 디스크에 남아 서브에이전트 입력·디버깅·검증 용도로만 쓰이고, PRD 본문에는 raw로 들어가지 않는다. 디자인 시스템 데모·푸터 같은 UI 트리 가비지는 자연스럽게 PRD에서 제외된다.
@@ -73,7 +73,7 @@ export FIGMA_TOKEN=figd_xxx   # Figma 계정 설정 → Personal access tokens
   "file_key": "2CqOVKu1KasCF5K2hDWN2G",
   "task_name": "로그인 및 인증",                 // 결과 디렉터리 이름. 생략 시 file_key 사용.
   "context": "프로젝트 컨텍스트 한 줄 — PRD 헤더에 들어감",
-  "change_labels": ["변경", "추가"],          // 선택. 변경 박스 라벨. 생략 시 기본 ["변경","추가"]
+  "change_labels": ["변경", "추가", "수정"],    // 선택. 변경 박스 라벨. 생략 시 기본 ["변경","추가","수정"]
   "nodes": [
     {
       "id": "1518:57004",                     // node-id의 "-"는 ":"로 변환
@@ -140,7 +140,7 @@ export FIGMA_TOKEN=figd_xxx   # Figma 계정 설정 → Personal access tokens
    ```
    {output_dir}/{task_name 또는 file_key}/{node_id_safe}/
      tree.json            # /v1/files/{k}/nodes 원본
-     texts.md             # 부모 frame 계층 + 굵은 글씨 헤더 추론 ([변경]/[추가] 마커 포함)
+     texts.md             # 부모 frame 계층 + 굵은 글씨 헤더 추론 ([변경]/[추가]/[수정] 마커 포함)
      comments.md          # 노드 서브트리에 앵커된 댓글 스레드 (있을 때만)
      screenshot.png       # 노드 전체 스냅샷
      images/
@@ -155,7 +155,7 @@ export FIGMA_TOKEN=figd_xxx   # Figma 계정 설정 → Personal access tokens
    - `{{EXCLUDE_NOTES}}`
    - `{{CONTEXT}}`
 
-   서브에이전트는 디렉터리 내 `texts.md`·`screenshot.png`·`images/*.png`·`comments.md`(있으면)를 Read로 읽고 모드별 분석을 수행한다. `texts.md`의 `[변경]`/`[추가]` 마커와 댓글의 결정·변경 논의를 분석에 반드시 반영한다. 결과 처리는 다음 순서로:
+   서브에이전트는 디렉터리 내 `texts.md`·`screenshot.png`·`images/*.png`·`comments.md`(있으면)를 Read로 읽고 모드별 분석을 수행한다. `texts.md`의 `[변경]`/`[추가]`/`[수정]` 마커와 댓글의 결정·변경 논의를 분석에 반드시 반영한다. 결과 처리는 다음 순서로:
    1. **1순위**: `Write` 도구로 `{node_dir}/analysis.{mode}.md` 에 직접 저장 → 메인에는 짧은 요약 보고만 반환 (메인 컨텍스트 보호).
    2. **fallback**: 환경 권한 정책으로 Write가 차단되면 분석 마크다운 본문 전체를 반환. 본문 외 군더더기(설명·코드펜스) 없이 `#### ` 시작 헤딩(체크리스트 첫 항목)부터 시작하는 마크다운 그대로 반환. 노드 메타 헤더는 만들지 않음 (PRD 합성 시 노드 섹션 상단에 이미 표시되므로 중복 금지).
 
@@ -175,7 +175,7 @@ export FIGMA_TOKEN=figd_xxx   # Figma 계정 설정 → Personal access tokens
 
 5. **마무리**
    - 결과 경로 안내.
-   - 검증 체크리스트 출력 (제외 노드가 본문에 없는가 / 모드별 핵심 항목이 들어있는가 / 이미지 첨부가 깨지지 않았는가 / `변경·추가 요약`이 Figma 변경 박스와 일치하는가).
+   - 검증 체크리스트 출력 (제외 노드가 본문에 없는가 / 모드별 핵심 항목이 들어있는가 / 이미지 첨부가 깨지지 않았는가 / `변경·추가·수정 요약`이 Figma 변경 박스와 일치하는가).
 
 ## 인증
 
@@ -194,7 +194,7 @@ export FIGMA_TOKEN=figd_xxx   # Figma 계정 설정 → Personal access tokens
 ├── {제목} (backend).md + {제목} (frontend).md # 모드 both
 └── {node_id_safe}/
     ├── tree.json
-    ├── texts.md                             # [변경]/[추가] 마커 포함
+    ├── texts.md                             # [변경]/[추가]/[수정] 마커 포함
     ├── comments.md                          # 노드 관련 댓글 스레드 (있는 노드만)
     ├── page_info.json                       # 페이지 메타 (있는 노드만)
     ├── screenshot.png
