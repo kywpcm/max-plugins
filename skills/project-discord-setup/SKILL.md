@@ -216,12 +216,17 @@ CLAUDE_PROJECT_DIR="$PWD" bash ~/.claude/hooks/scripts/voice-notify-progress.sh 
 
 이 단계는 **음성 구성에서 기본 수행**한다. `discord-reply-over-ask` 메모리는 **DM·음성 모두 기본 시드**다([2단계]에서 이미 시드했으면 중복 복사하지 말고 인덱스만 확인). DM 전용 구성에선 hook 시드와 음성 전용 메모리는 보통 생략하되, SSOT 등 일반 컨벤션 메모리는 원하면 시드할 수 있다(사용자에게 물어 결정).
 
-> **대화 톤·페르소나(어시스턴트 이름 등)는 이 스킬이 시드하지 않는다.** 프로젝트마다 다르므로, 디스코드를 붙인 각 프로젝트에서 사용자가 직접 메모리로 설정한다.
+**③ 음성 출력 스타일** — `seed/output-styles/voice-friendly.md`를 `<프로젝트>/.claude/output-styles/voice-friendly.md`로 복사한다(**없을 때만**; 있으면 사용자 커스텀 보존). 봇 #2가 음성 대화 시 *짧게·마크다운 없이·구어체*로 답하게 하는 output style이다 — 봇 #1의 `filterForTTS`(발음 교정, `tts-pronunciation.json`)와 역할이 다르다(이건 봇 #2의 응답 *형식* 자체를 음성 친화로 만든다. 약어 풀이는 봇 #1이 담당하므로 여기 넣지 않는다).
+- **활성화는 수동**: 음성 대화를 시작할 봇 #2 세션에서 `/output-style voice-friendly`로 켜고, 그 프로젝트에서 코딩할 땐 기본 스타일로 되돌린다. output style은 **세션 전역**이라 `settings.json`에 고정하면 코딩 세션까지 음성 스타일이 적용돼 부적합하므로 고정하지 않는다.
+- 프로젝트 레벨(`.claude/output-styles/`)에 두므로 그 프로젝트 세션의 `/output-style` 목록에 "Voice Friendly"로 뜬다.
+
+> **대화 톤·페르소나(어시스턴트 이름 등)는 이 스킬이 시드하지 않는다.** 프로젝트마다 다르므로, 디스코드를 붙인 각 프로젝트에서 사용자가 직접 메모리로 설정한다. (단 **음성 출력 형식**용 `voice-friendly` output style은 톤/페르소나와 무관한 *형식* 설정이라 위 ③에서 시드한다.)
 
 **⚠️ [중요] 시드 후 적용 — 세션을 한 번 나갔다 다시 들어와야 한다.** 시드가 끝나면 사용자에게 다음을 안내한다:
 - **훅**: Claude Code는 **시작 시점에 훅 스냅샷을 고정**한다(세션 중 `settings.json`이 바뀌어도 자동 적용 안 함 — 보안 모델). 따라서 ① **세션 재시작**, 또는 ② **`/hooks` 메뉴에서 변경 검토→적용** 중 하나가 필요하다. `/reload-plugins`는 *플러그인* 훅만 다시 읽지 **프로젝트 `settings.json` 훅 스냅샷은 갱신하지 않는다**.
 - **메모리**: `MEMORY.md` 인덱스는 **세션 시작 시** 컨텍스트에 로드된다. 시드한 메모리는 **다음 세션부터** 자동 인식된다.
 - → 결론: 시드 직후 **봇 #2 세션을 재시작**(`clauded --channels plugin:discord@claude-plugins-official`를 다시 실행)하면 훅·메모리가 함께 적용된다.
+- **음성 출력 스타일**: 재시작한 봇 #2 세션에서 음성 대화를 시작할 때 `/output-style voice-friendly`로 켠다(코딩 세션에선 끈다).
 
 ## 4. 검증
 
