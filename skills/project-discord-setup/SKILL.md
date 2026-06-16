@@ -209,10 +209,10 @@ CLAUDE_PROJECT_DIR="$PWD" bash ~/.claude/hooks/scripts/voice-notify-progress.sh 
 ```
 텍스트 채널에 "⚙️ 작업 진행 중…"이 뜨면 스크립트·값 정상. 안 뜨면 `BOT_TOKEN`(채널 `.env`)·`TEXT_CHANNEL_ID`(루트 `.env`)를 확인한다.
 
-**② 메모리** — `seed/memory/`의 6개 `.md` + `MEMORY.md`를 새 프로젝트의 메모리 디렉토리에 복사:
+**② 메모리** — `seed/memory/`의 7개 `.md` + `MEMORY.md`를 새 프로젝트의 메모리 디렉토리에 복사:
 - 경로: `~/.claude/projects/<인코딩된_프로젝트_절대경로>/memory/` — 절대경로의 `/`를 `-`로 치환한다(예: `/Users/kywpcm/workspace/foo` → `~/.claude/projects/-Users-kywpcm-workspace-foo/memory/`).
 - 디렉토리가 없으면 생성. `MEMORY.md`가 이미 있으면 seed의 인덱스 줄들을 **append**(중복 제목 제외), 없으면 seed `MEMORY.md`를 그대로 둔다.
-- 내용은 원격 결정은 reply로(`AskUserQuestion` 자제)·ack 규칙·hook 설명·SSOT·병렬편집·todo 컨벤션 — 새 프로젝트에 보편 적용되는 **일반화판**이다. 프로젝트 고유 사실이 생기면 이후 대화로 별도 메모리를 쌓는다.
+- 내용은 원격 결정은 reply로(`AskUserQuestion` 자제)·ack 규칙·hook 설명·SSOT·병렬편집·todo 컨벤션·ADR 기록 — 새 프로젝트에 보편 적용되는 **일반화판**이다. 프로젝트 고유 사실이 생기면 이후 대화로 별도 메모리를 쌓는다.
 
 이 단계는 **음성 구성에서 기본 수행**한다. `discord-reply-over-ask` 메모리는 **DM·음성 모두 기본 시드**다([2단계]에서 이미 시드했으면 중복 복사하지 말고 인덱스만 확인). DM 전용 구성에선 hook 시드와 음성 전용 메모리는 보통 생략하되, SSOT 등 일반 컨벤션 메모리는 원하면 시드할 수 있다(사용자에게 물어 결정).
 
