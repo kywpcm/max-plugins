@@ -4,3 +4,4 @@
 - [SSOT Docs Sync](feedback_ssot_docs_sync.md) — 소스 수정 시 관련 문서 같은 턴에 현행화.
 - [Workspace Parallel Edits](feedback_workspace_parallel_edits.md) — 영우도 병렬 편집, git 삭제(D) 파일 함부로 복구 말 것.
 - [Todo Docs Convention](project_todo_docs.md) — 아이디어는 docs/todo/improvements.md(IMP-NNN)에 정리.
+- [ADR Convention](project_adr_convention.md) — 주요 애플리케이션·아키텍처 결정은 docs/adr/ADR-NNN_제목.md에 맥락·결정·의도·영향·대안·참고로 기록.
