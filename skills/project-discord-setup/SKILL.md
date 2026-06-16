@@ -11,7 +11,7 @@ description: >
   access 정책 변경 자체가 목적이면 쓰지 않는다(그건 discord:configure / discord:access).
 user-invocable: true
 argument-hint: "[dm | voice]"
-version: 0.3.0
+version: 0.4.0
 ---
 
 # project-discord-setup
@@ -95,9 +95,11 @@ version: 0.3.0
   ```bash
   clauded --channels plugin:discord@claude-plugins-official
   ```
-  `clauded`는 `claude --dangerously-skip-permissions` alias다(alias 없으면 `claude --dangerously-skip-permissions --channels plugin:discord@claude-plugins-official`). 원격(디스코드)에선 권한 모달을 못 푸므로 bypassPermissions로 띄운다(음성 워크플로 정신).
+  `clauded`는 `claude --dangerously-skip-permissions` alias다(alias 없으면 `claude --dangerously-skip-permissions --channels plugin:discord@claude-plugins-official`). 원격(디스코드)에선 로컬 권한·plan 모달을 못 푸므로 bypassPermissions로 띄우고 plan 모드는 켜지 않는다(원격 결정은 reply 선택지로 받는다 — seed `discord-reply-over-ask`).
 - 이미 채널 모드로 떠 있는 세션이면 `/reload-plugins`로 새 토큰을 로드 — server.ts는 토큰을 **부팅 시 1회만** 읽으므로 필수.
 - 디스코드에서 **봇 #2에게 DM** 전송 → Claude 응답이 오면 DM 구성 완료(봇 #2 토큰 정확성까지 검증됨).
+
+**[자동] 원격 인터랙션 메모리 시드 (DM·음성 공통)** — `seed/memory/feedback_discord_reply_over_ask.md`를 프로젝트 메모리 디렉토리에 복사하고 `MEMORY.md` 인덱스에 해당 줄을 추가한다(경로 규칙·중복 처리·세션 재시작 주의점은 [3-A ②]와 동일). 이 규칙(원격 턴은 `AskUserQuestion`·plan 모달 대신 reply로 선택지를 보내고 다음 메시지로 결정 처리)은 **DM·음성 모두에 필요한 핵심 동작**이라 DM 전용에도 기본 시드한다. 시드한 메모리는 **다음 세션부터** 인식되니 봇 #2 세션을 한 번 재시작한다.
 
 DM 전용이면 여기서 끝. 음성이면 3으로.
 
@@ -210,9 +212,9 @@ CLAUDE_PROJECT_DIR="$PWD" bash ~/.claude/hooks/scripts/voice-notify-progress.sh 
 **② 메모리** — `seed/memory/`의 6개 `.md` + `MEMORY.md`를 새 프로젝트의 메모리 디렉토리에 복사:
 - 경로: `~/.claude/projects/<인코딩된_프로젝트_절대경로>/memory/` — 절대경로의 `/`를 `-`로 치환한다(예: `/Users/kywpcm/workspace/foo` → `~/.claude/projects/-Users-kywpcm-workspace-foo/memory/`).
 - 디렉토리가 없으면 생성. `MEMORY.md`가 이미 있으면 seed의 인덱스 줄들을 **append**(중복 제목 제외), 없으면 seed `MEMORY.md`를 그대로 둔다.
-- 내용은 ack 규칙·음성 워크플로·hook 설명·SSOT·병렬편집·todo 컨벤션 — 새 프로젝트에 보편 적용되는 **일반화판**이다. 프로젝트 고유 사실이 생기면 이후 대화로 별도 메모리를 쌓는다.
+- 내용은 원격 결정은 reply로(`AskUserQuestion` 자제)·ack 규칙·hook 설명·SSOT·병렬편집·todo 컨벤션 — 새 프로젝트에 보편 적용되는 **일반화판**이다. 프로젝트 고유 사실이 생기면 이후 대화로 별도 메모리를 쌓는다.
 
-이 단계는 **음성 구성에서 기본 수행**한다. DM 전용 구성에선 hook 시드는 보통 생략하되, SSOT 메모리 정도는 원하면 시드할 수 있다(사용자에게 물어 결정).
+이 단계는 **음성 구성에서 기본 수행**한다. `discord-reply-over-ask` 메모리는 **DM·음성 모두 기본 시드**다([2단계]에서 이미 시드했으면 중복 복사하지 말고 인덱스만 확인). DM 전용 구성에선 hook 시드와 음성 전용 메모리는 보통 생략하되, SSOT 등 일반 컨벤션 메모리는 원하면 시드할 수 있다(사용자에게 물어 결정).
 
 > **대화 톤·페르소나(어시스턴트 이름 등)는 이 스킬이 시드하지 않는다.** 프로젝트마다 다르므로, 디스코드를 붙인 각 프로젝트에서 사용자가 직접 메모리로 설정한다.
 
