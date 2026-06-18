@@ -29,7 +29,7 @@ Figma 기획서 → PRD 마크다운 정제 스킬.
   - 메인 컨텍스트에는 짧은 보고만 돌아옴 → 노드 수가 많아도 안전.
 - **모드 분기**: `backend | frontend | both`. 모드별로 분석 프롬프트·PRD 템플릿이 다름.
 - **노드별 제외**: `exclude_node_ids`로 트리 가지치기 + `exclude_notes` 자연어 사유 첨부.
-- **변경/추가/수정 표시 결정적 추출**: "변경"·"추가"·"수정" 라벨 TEXT 노드의 주석 박스 영역(bbox)을 찾아, 그 안에 들어가는 콘텐츠 텍스트에 `[변경]`/`[추가]`/`[수정]` 태그를 단다(색/fill 판정이 아니라 라벨 일치 + geometry 겹침이라 결정적). PRD 상단에 `## 변경·추가·수정 요약` 섹션으로 취합 → 코딩 에이전트가 변경분을 우선 인지. 라벨은 `change_labels`로 override.
+- **변경/추가/수정 표시 결정적 추출**: "변경"·"추가"·"수정" 라벨 TEXT 노드의 주석 박스 영역(bbox)을 찾아, 그 안에 들어가는 콘텐츠 텍스트에 `[변경]`/`[추가]`/`[수정]` 태그를 단다(색/fill 판정이 아니라 라벨 일치 + geometry 겹침이라 결정적). PRD 상단에 `## 변경·추가·수정 요약 (정제)` 섹션으로 취합 → 코딩 에이전트가 변경분을 우선 인지. 라벨은 `change_labels`로 override. **합성 단계에서 UI 노이즈(더미 셀 값·트리 카운트 노드·번호 뱃지·마스킹 샘플)는 자동으로 걸러 신호만 노출**하고, 걸러진 건수는 "기타 N건(고유 M종)"으로 접는다(원본 마커는 각 노드 `texts.md` 보존). 큰 변경 박스가 테이블 전체를 덮어 더미까지 태깅되는 문제를 요약에서 흡수.
 - **댓글 수집**: `/v1/files/{key}/comments`를 파일당 1회 호출해 노드 서브트리에 앵커된 스레드(해결/미해결 모두, `[RESOLVED]` 표기)를 `comments.md`로 직렬화. (a) **서브에이전트 입력**으로 분석에 반영되고, (b) PRD 노드 섹션의 **`관련 댓글 (Figma)` 하위 섹션에 원문이 결정적으로 직접 수록**된다(LLM 누락 방지). 디자인 본문엔 없는 최신 결정·변경 논의를 포착.
 - **숨김 노드(`hidden=true`) 자동 필터링** ("디스크립션입니다." 같은 placeholder 방지).
 - **PRD 본문은 `analysis.{mode}.md` 중심**: 서브에이전트가 정제한 분석 결과만 PRD에 포함된다. 원본 `texts.md`는 디스크에 남아 서브에이전트 입력·디버깅·검증 용도로만 쓰이고, PRD 본문에는 raw로 들어가지 않는다. 디자인 시스템 데모·푸터 같은 UI 트리 가비지는 자연스럽게 PRD에서 제외된다.
@@ -43,8 +43,8 @@ Figma 기획서 → PRD 마크다운 정제 스킬.
 ```bash
 export FIGMA_TOKEN=figd_xxx   # Figma 계정 설정 → Personal access tokens
 
-# 프로젝트 루트(예: ~/workspace/your-project/)에 figma-prd.config.json 작성.
-# 결과 PRD는 자동으로 <project_root>/docs/prd-out/ 에 생성된다.
+# config 에 "domain" 을 지정하고 docs/{domain}/prd/{task_name}/figma-prd.{slug}.config.json 에 두면
+# 산출물(PRD·node 디렉터리)도 같은 정규 경로에 생성된다.
 /figma-prd
 # 또는 명시적으로:
 /figma-prd --config figma-prd.config.json
@@ -58,11 +58,12 @@ export FIGMA_TOKEN=figd_xxx   # Figma 계정 설정 → Personal access tokens
 /figma-prd
 # Claude가 다음을 순서대로 물어봄:
 #   1) mode (backend/frontend/both)
-#   2) Figma 파일 URL 또는 file_key
-#   3) 추출 대상 노드 URL 목록
-#   4) 노드별 제외 지시 (선택)
-#   5) 출력 디렉터리
-# 마지막에 "이 입력을 config 파일로 저장할까요?" 안내
+#   2) domain (예: user / auth / common/mail) — 정규 경로 docs/{domain}/prd/{task} 결정
+#   3) task_name (작업 의미 단위 라벨)
+#   4) Figma 파일 URL 또는 file_key
+#   5) 추출 대상 노드 URL 목록
+#   6) 노드별 제외 지시 (선택)
+# Claude가 docs/{domain}/prd/{task_name}/figma-prd.{slug}.config.json 을 생성한 뒤 추출·합성한다.
 ```
 
 ## config 스키마
@@ -71,7 +72,8 @@ export FIGMA_TOKEN=figd_xxx   # Figma 계정 설정 → Personal access tokens
 {
   "mode": "backend",                          // "backend" | "frontend" | "both"
   "file_key": "2CqOVKu1KasCF5K2hDWN2G",
-  "task_name": "로그인 및 인증",                 // 결과 디렉터리 이름. 생략 시 file_key 사용.
+  "task_name": "로그인 및 인증",                 // 결과 디렉터리(leaf) 이름. 생략 시 file_key 사용.
+  "domain": "auth",                            // 선택. 정규 경로 docs/{domain}/prd/{task_name}/ 로 출력. 중첩 가능(common/mail).
   "context": "프로젝트 컨텍스트 한 줄 — PRD 헤더에 들어감",
   "change_labels": ["변경", "추가", "수정"],    // 선택. 변경 박스 라벨. 생략 시 기본 ["변경","추가","수정"]
   "nodes": [
@@ -90,13 +92,15 @@ export FIGMA_TOKEN=figd_xxx   # Figma 계정 설정 → Personal access tokens
 
 ### 경로 규약
 
-- **config 위치**: 작업 프로젝트 루트의 `figma-prd.config.json`. 인자 생략 시 cwd → git 루트 순으로 자동 탐색.
-- **output_dir 기본값**: `<project_root>/docs/prd-out` (config에 `output_dir`를 명시하지 않으면 이 경로 사용).
-- **`output_dir` 명시 시**:
-  - 절대 경로 → 그대로 사용.
-  - 상대 경로 → config 파일이 있는 디렉터리 기준으로 해석 (cwd 아님).
-- **`task_name`**: 결과 디렉터리 이름. 동일 Figma 파일을 작업 의미 단위(예: "로그인 및 인증", "사용자 관리")로 구분할 때 사용. 생략하면 `file_key`로 fallback (하위 호환). 최종 경로는 `{output_dir}/{task_name 또는 file_key}/`.
-- **권장**: `.gitignore`에 `docs/prd-out/` 추가. PRD는 자동 생성물이라 commit 대상이 아닌 경우가 일반적.
+출력 base 경로 결정 우선순위 (`{base}/{task_name}/` 에 config·산출물이 함께 위치):
+1. **`output_dir` 명시**(override): 절대 경로 → 그대로 / 상대 경로 → config 파일 디렉터리 기준. → `{output_dir}/{task_name}/`.
+2. **`domain` 지정**(권장): `<git_root>/docs/{domain}/prd/{task_name}/`. domain 은 `common/mail` 처럼 중첩 가능.
+3. 둘 다 없음(레거시): `<git_root>/docs/prd-out/{task_name}/`.
+
+- **권장 흐름**: config 를 `docs/{domain}/prd/{task_name}/figma-prd.{slug}.config.json` 에 두고 `--config <path>` 로 호출. 산출물(PRD·node 디렉터리)이 config 옆 같은 정규 경로에 떨어진다. 같은 Figma 파일을 도메인·작업 단위로 분리 저장(예: `docs/auth/prd/로그인 및 인증/`, `docs/user/prd/사용자 관리/`, `docs/common/mail/prd/이메일 템플릿/`).
+- **config 자동 탐색**(레거시): `--config` 생략 시 cwd → git 루트 순으로 `figma-prd.config.json` 탐색.
+- **`task_name`**: 결과 디렉터리(leaf) 이름. 생략 시 `file_key` fallback.
+- **토큰·gitignore**: config 에 `figma_token` 을 박으면 `.gitignore` 에 `figma-prd*.config.json` 추가(commit 금지). PRD 산출물도 보통 ignore.
 
 ## 모드별 추출 내용
 

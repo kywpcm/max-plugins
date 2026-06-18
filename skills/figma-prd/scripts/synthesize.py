@@ -123,6 +123,9 @@ def resolve_output_dir(cfg: dict[str, Any], config_path: Path) -> Path:
         p = Path(raw)
         return p.resolve() if p.is_absolute() else (config_dir / p).resolve()
     project_root = find_project_root(config_dir)
+    domain = (cfg.get("domain") or "").strip().strip("/")
+    if domain:
+        return (project_root / "docs" / domain / "prd").resolve()
     return (project_root / "docs" / "prd-out").resolve()
 
 
@@ -250,32 +253,86 @@ def render_node_section(
     return anchor, "\n".join(lines)
 
 
+# 변경 요약 노이즈 필터(구조적·빈도 휴리스틱만 — 프로젝트 고유값 하드코딩 금지).
+SUMMARY_REPEAT_THRESHOLD = 3  # 같은 값이 N회 이상 + 짧은 단일 토큰이면 반복 더미 셀로 간주
+SUMMARY_NOISE_PATTERNS = [
+    re.compile(r"^\d+([-.]\d+)*$"),    # 번호 뱃지: 1, 1-1, 2.3
+    re.compile(r"^.+\(\s*\d+\s*\)$"),  # 트리 카운트 노드: 000팀 (99), 미분류 그룹 (999)
+    re.compile(r"\*"),                  # 마스킹 샘플: 송*섭
+]
+
+
+def _is_summary_noise(text: str, total: int) -> bool:
+    """요약에서 접을 노이즈인지 판정. 구조적 패턴 또는 반복-짧은토큰(테이블 더미 셀)."""
+    for pat in SUMMARY_NOISE_PATTERNS:
+        if pat.search(text):
+            return True
+    if total >= SUMMARY_REPEAT_THRESHOLD and (" " not in text) and len(text) <= 16:
+        return True
+    return False
+
+
 def build_changes_section(summary: dict[str, Any]) -> str:
     """extract 단계가 결정적으로 감지한 변경/추가/수정 표시를 노드 링크와 함께 취합.
 
-    LLM을 거치지 않는 결정적 요약이다. 순수 숫자·2자 미만 토큰(번호 뱃지 등)은
-    노이즈로 제외한다.
+    큰 변경 박스가 테이블 전체를 덮으면 그 안의 더미 셀까지 태깅되므로, 요약 단계에서
+    (a) 중복 제거 (b) 구조적·반복 노이즈 필터 를 적용해 의미 있는 변경분만 신호로 남기고
+    나머지는 말미에 '기타 N건' 한 줄로 접는다. (원본 마커는 각 노드 texts.md 에 그대로 보존)
     """
-    items: list[str] = []
+    # 1) (label, text) 단위로 전역 집계: 등장 횟수 + 등장 노드 링크(중복 제거, 순서 유지)
+    totals: dict[tuple[str, str], int] = {}
+    order: list[tuple[str, str]] = []
+    node_links: dict[tuple[str, str], list[tuple[str, str]]] = {}
     for n in summary.get("nodes") or []:
         anchor = f"node-{safe_node_id(n['node_id'])}"
         for ch in n.get("changes") or []:
             text = " ".join((ch.get("text") or "").split())
             if len(text) < 2 or text.isdigit():
                 continue
-            if len(text) > 120:
-                text = text[:120] + "…"
-            items.append(f"- `[{ch['label']}]` {text} → [{n['label']}](#{anchor})")
-    if not items:
+            key = (ch["label"], text)
+            totals[key] = totals.get(key, 0) + 1
+            if key not in node_links:
+                node_links[key] = []
+                order.append(key)
+            link = (n["label"], anchor)
+            if link not in node_links[key]:
+                node_links[key].append(link)
+
+    # 2) 고유 항목을 신호/노이즈로 분류. 신호는 항목당 1줄(등장 노드 모두 링크),
+    #    노이즈는 말미에 건수·고유종수로 접는다.
+    signal: list[str] = []
+    noise_total = 0
+    noise_types = 0
+    for key in order:
+        label, text = key
+        if _is_summary_noise(text, totals[key]):
+            noise_total += totals[key]
+            noise_types += 1
+            continue
+        disp = text if len(text) <= 120 else text[:120] + "…"
+        links = ", ".join(f"[{nl}](#{a})" for nl, a in node_links[key])
+        signal.append(f"- `[{label}]` {disp} → {links}")
+
+    if not signal and noise_total == 0:
         return "_자동 감지된 변경/추가/수정 표시 없음._"
-    return "\n".join(items)
+
+    out = list(signal)
+    if noise_total:
+        out.append("")
+        out.append(
+            f"> 그 외 UI 노이즈/반복 더미 **{noise_total}건**(고유 {noise_types}종) 제외 "
+            "— 더미 셀 값·트리 카운트 노드·번호 뱃지·마스킹 샘플. 원본 마커는 각 노드 `texts.md` 참조."
+        )
+    return "\n".join(out)
 
 
 def build_prd(summary: dict[str, Any], mode: str) -> str:
     file_key = summary["file_key"]
     context = summary.get("context") or ""
-    output_dir = Path(summary["output_dir"])
     nodes = summary["nodes"]
+    # 이미지·로컬경로 링크는 PRD .md 가 놓이는 디렉터리(노드 디렉터리들의 공통 부모) 기준
+    # 상대경로로 만든다. output_dir(상위) 기준이면 task 하위에 쓰인 PRD 와 어긋나 이중 중첩됨.
+    prd_root = Path(nodes[0]["node_dir"]).parent if nodes else Path(summary["output_dir"])
 
     title = context or file_key
     generated_at = datetime.datetime.now().astimezone().isoformat()
@@ -285,7 +342,7 @@ def build_prd(summary: dict[str, Any], mode: str) -> str:
     toc_lines: list[str] = []
     texts_paths: list[Path] = []
     for i, node_entry in enumerate(nodes, start=1):
-        anchor, sec = render_node_section(i, file_key, node_entry, mode, output_dir)
+        anchor, sec = render_node_section(i, file_key, node_entry, mode, prd_root)
         sections.append(sec)
         toc_lines.append(f"{i}. [{node_entry['label']}](#{anchor})")
         texts_paths.append(Path(node_entry["node_dir"]) / "texts.md")

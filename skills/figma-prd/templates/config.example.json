@@ -1,6 +1,8 @@
 {
   "mode": "backend",
   "file_key": "2CqOVKu1KasCF5K2hDWN2G",
+  "task_name": "로그인 및 인증",
+  "domain": "auth",
   "context": "천안형GPT 사용자 관리·로그인 흐름. 백엔드 구현 plan 입력용.",
   "nodes": [
     {

@@ -73,11 +73,12 @@ def discover_config(explicit: str | None) -> Path:
 
 
 def resolve_output_dir(cfg: dict[str, Any], config_path: Path) -> Path:
-    """output_dir 결정 우선순위:
+    """출력 base 디렉터리(여기에 prd_dir_name=task_name 이 붙어 최종 경로) 결정 우선순위:
 
     1. config의 ``output_dir`` 절대 경로 → 그대로.
     2. config의 ``output_dir`` 상대 경로 → config 파일 디렉터리 기준.
-    3. 명시 없음 → git 프로젝트 루트의 ``docs/prd-out``. git이 아니면 config 디렉터리.
+    3. ``domain`` 지정 → git 프로젝트 루트의 ``docs/{domain}/prd`` (domain 은 ``common/mail`` 처럼 중첩 가능).
+    4. 둘 다 없음 → git 프로젝트 루트의 ``docs/prd-out``. git이 아니면 config 디렉터리.
     """
     raw = cfg.get("output_dir")
     config_dir = config_path.parent.resolve()
@@ -85,6 +86,9 @@ def resolve_output_dir(cfg: dict[str, Any], config_path: Path) -> Path:
         p = Path(raw)
         return p.resolve() if p.is_absolute() else (config_dir / p).resolve()
     project_root = find_project_root(config_dir)
+    domain = (cfg.get("domain") or "").strip().strip("/")
+    if domain:
+        return (project_root / "docs" / domain / "prd").resolve()
     return (project_root / "docs" / "prd-out").resolve()
 
 
