@@ -23,7 +23,7 @@ version: 0.1.0
 - **3-way reconcile**: `BASE`(이 머신이 마지막으로 reconcile한 repo 커밋) / `LIVE`(~/.claude) / `REPO`(pull 후 repo)를 비교해 방향을 자동 판별. 한쪽만 바뀐 건 자동 pull/push, 양쪽이 같은 항목을 다르게 바꾼 **진짜 충돌만** 사용자에게 묻는다.
 - **base 추적**: 머신로컬 파일 `~/.claude/.max-env-base.json`(git 밖이라 머신별)에 마지막 reconcile 커밋 SHA를 저장. 이게 3-way의 공통 조상이다.
 - **동기화 대상 = 결정적 파일 4종**: `settings.json`(sync-fields 5필드, 필드 단위), `CLAUDE.md`, `statusline-command.sh`, `hooks/scripts/*.sh`. `known_marketplaces.json`/`installed_plugins.json`은 **대상이 아니다**(파생 상태 — Claude Code가 관리).
-- **제외 항목**(`dotfiles/sync-exclude.json`): discord 등은 양방향에서 제외. `enabledPlugins`는 제외 플러그인의 라이브 상태를 보존(push 시 드롭, pull 시 보존).
+- **제외 항목**(`dotfiles/sync-exclude.json`): `plugins`(discord 등)·`marketplaces`(머신 전용 커스텀 마켓)는 양방향에서 제외. `enabledPlugins`/`extraKnownMarketplaces`는 제외 항목의 라이브 상태를 보존(push 시 드롭, pull 시 보존).
 - 민감 정보(봇 토큰, 유저 ID)는 절대 커밋하지 않는다.
 - 엔진은 `skills/reconcile-claude-env/scripts/reconcile.py`. 이 스킬은 git/플러그인 작업과 충돌 UX·커밋만 담당한다.
 

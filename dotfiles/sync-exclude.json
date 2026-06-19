@@ -1,6 +1,10 @@
 {
   "plugins": [
-    "discord@claude-plugins-official"
+    "discord@claude-plugins-official",
+    "korean-law@korean-law-marketplace"
+  ],
+  "marketplaces": [
+    "korean-law-marketplace"
   ],
   "channels": [
     "discord"

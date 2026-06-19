@@ -97,6 +97,13 @@ def excluded_plugins(repo):
         return set()
 
 
+def excluded_marketplaces(repo):
+    try:
+        return set(load_json_cfg(repo, "sync-exclude.json").get("marketplaces", []))
+    except FileNotFoundError:
+        return set()
+
+
 def sync_fields(repo):
     return load_json_cfg(repo, "sync-fields.json")
 
@@ -108,8 +115,15 @@ def filter_enabled(plugins, excluded):
     return {k: v for k, v in plugins.items() if k not in excluded}
 
 
-def live_settings_subset(home, fields, excluded):
-    """라이브 settings.json에서 sync 대상 필드만 + enabledPlugins 제외필터."""
+def filter_marketplaces(mkts, excluded):
+    """extraKnownMarketplaces dict에서 제외 마켓 제거."""
+    if not isinstance(mkts, dict):
+        return mkts
+    return {k: v for k, v in mkts.items() if k not in excluded}
+
+
+def live_settings_subset(home, fields, excluded, excluded_mkts=frozenset()):
+    """라이브 settings.json에서 sync 대상 필드만 + enabledPlugins/extraKnownMarketplaces 제외필터."""
     raw = read_text(live_path(home, SETTINGS))
     if raw is None:
         return {}
@@ -117,6 +131,8 @@ def live_settings_subset(home, fields, excluded):
     sub = {k: data[k] for k in fields if k in data}
     if "enabledPlugins" in sub:
         sub["enabledPlugins"] = filter_enabled(sub["enabledPlugins"], excluded)
+    if "extraKnownMarketplaces" in sub:
+        sub["extraKnownMarketplaces"] = filter_marketplaces(sub["extraKnownMarketplaces"], excluded_mkts)
     return sub
 
 
@@ -184,10 +200,11 @@ def build_items(repo, base, home):
     """모든 아티팩트의 (key, kind, state, payload) 목록."""
     fields = sync_fields(repo)
     excluded = excluded_plugins(repo)
+    excluded_mkts = excluded_marketplaces(repo)
     items = []
 
     # settings.json — 필드 단위
-    b_set, l_set, r_set = base_settings(repo, base), live_settings_subset(home, fields, excluded), repo_settings(repo)
+    b_set, l_set, r_set = base_settings(repo, base), live_settings_subset(home, fields, excluded, excluded_mkts), repo_settings(repo)
     for fld in fields:
         b, l, r = canon(b_set.get(fld)), canon(l_set.get(fld)), canon(r_set.get(fld))
         items.append({
@@ -254,6 +271,7 @@ def apply(args):
     items = build_items(repo, base, home)
     fields = sync_fields(repo)
     excluded = excluded_plugins(repo)
+    excluded_mkts = excluded_marketplaces(repo)
 
     report = {"pulled": [], "pushed": [], "deleted_live": [], "deleted_repo": [],
               "skipped": [], "unresolved_conflicts": []}
@@ -277,7 +295,7 @@ def apply(args):
                 live_field_pulls[fld] = repo_settings(repo).get(fld)
                 report["pulled"].append(it["key"])
             else:  # push
-                repo_field_pushes[fld] = live_settings_subset(home, fields, excluded).get(fld)
+                repo_field_pushes[fld] = live_settings_subset(home, fields, excluded, excluded_mkts).get(fld)
                 report["pushed"].append(it["key"])
             continue
 
@@ -325,6 +343,15 @@ def apply(args):
                     if pid in live_now:
                         merged[pid] = live_now[pid]
                 data["enabledPlugins"] = merged
+            elif fld == "extraKnownMarketplaces":
+                # repo값(제외 없음) + 라이브의 제외 마켓 보존
+                live_now = data.get("extraKnownMarketplaces", {})
+                live_now = live_now if isinstance(live_now, dict) else {}
+                merged = filter_marketplaces(val, excluded_mkts)
+                for mkt in excluded_mkts:
+                    if mkt in live_now:
+                        merged[mkt] = live_now[mkt]
+                data["extraKnownMarketplaces"] = merged
             else:
                 data[fld] = val
         write_file(lp, json.dumps(data, indent=2, ensure_ascii=False) + "\n")
@@ -338,6 +365,8 @@ def apply(args):
                 data.pop(fld, None)
             elif fld == "enabledPlugins":
                 data[fld] = filter_enabled(val, excluded)  # 제외 플러그인 드롭
+            elif fld == "extraKnownMarketplaces":
+                data[fld] = filter_marketplaces(val, excluded_mkts)  # 제외 마켓 드롭
             else:
                 data[fld] = val
         write_file(rp, json.dumps(data, indent=2, ensure_ascii=False) + "\n")
@@ -361,11 +390,11 @@ def show(args):
     repo, base, home, key = args.repo, args.base, home_dir(args), args.key
     if key.startswith(SETTINGS + "#"):
         fld = key.split("#", 1)[1]
-        fields, excluded = sync_fields(repo), excluded_plugins(repo)
+        fields, excluded, excluded_mkts = sync_fields(repo), excluded_plugins(repo), excluded_marketplaces(repo)
         out = {
             "key": key,
             "base": base_settings(repo, base).get(fld),
-            "live": live_settings_subset(home, fields, excluded).get(fld),
+            "live": live_settings_subset(home, fields, excluded, excluded_mkts).get(fld),
             "repo": repo_settings(repo).get(fld),
         }
     else:
