@@ -1,6 +1,5 @@
 - [Discord Reply over Ask](feedback_discord_reply_over_ask.md) — 원격 턴은 AskUserQuestion·plan 모달 대신 reply로 선택지 전송, 다음 메시지로 결정 처리(DM·음성 공통).
-- [Discord Ack](feedback_discord_ack.md) — 수신 ack는 voice-notify-ack.sh hook이 자동. 모델은 수동 ack 안 함, 결과·응답만 reply.
-- [Notification Hook Voice Alert](project_notification_hook_voice_alert.md) — Discord 음성 알림 hook 4종(approval·progress·ack·Stop 타이머초기화).
+- [Notification Hook Voice Alert](project_notification_hook_voice_alert.md) — Discord 음성 알림 hook 3종(approval·progress·Stop 타이머초기화). 수신 ack hook은 두지 않으며 모델도 수동 ack 안 함.
 - [SSOT Docs Sync](feedback_ssot_docs_sync.md) — 소스 수정 시 관련 문서 같은 턴에 현행화.
 - [Workspace Parallel Edits](feedback_workspace_parallel_edits.md) — 영우도 병렬 편집, git 삭제(D) 파일 함부로 복구 말 것.
 - [Todo Docs Convention](project_todo_docs.md) — 아이디어는 docs/todo/improvements.md(IMP-NNN)에 정리.

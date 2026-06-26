@@ -129,7 +129,7 @@ install_file "$DOTFILES_DIR/statusline-command.sh" "$CLAUDE_DIR/statusline-comma
 echo ""
 echo "[2/4] 훅 스크립트 설치..."
 # dotfiles/hooks/scripts/*.sh 전체를 설치한다 (새 스크립트 추가 시 install.sh 수정 불필요).
-# block-dangerous.sh(글로벌 PreToolUse)와 voice-notify-{ack,approval,progress}.sh(프로젝트별 hook 자산)가 함께 배포된다.
+# block-dangerous.sh(글로벌 PreToolUse)와 voice-notify-{approval,progress}.sh(프로젝트별 hook 자산)가 함께 배포된다.
 for script in "$DOTFILES_DIR"/hooks/scripts/*.sh; do
   [ -e "$script" ] || continue
   name="$(basename "$script")"

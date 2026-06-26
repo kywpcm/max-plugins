@@ -1,13 +1,5 @@
 {
   "hooks": {
-    "UserPromptSubmit": [
-      {
-        "matcher": "",
-        "hooks": [
-          { "type": "command", "command": "bash ~/.claude/hooks/scripts/voice-notify-ack.sh" }
-        ]
-      }
-    ],
     "Notification": [
       {
         "matcher": "",
